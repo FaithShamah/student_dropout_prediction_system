@@ -10,17 +10,17 @@ import seaborn as sns
 import warnings
 warnings.filterwarnings("ignore")
 
-WITU_BROWN = "#6B3200"
-WITU_ORANGE = "#E67E00"
-WITU_BLACK = "#000000"
-WITU_WHITE = "#FFFFFF"
-WITU_LIGHT = "#F2F2F2"
-WITU_SOFT_BROWN = "#F4E7DB"
-WITU_SOFT_ORANGE = "#FFF1E1"
-WITU_SOFT_GRAY = "#FAFAFA"
-WITU_ACCENT = "#1F6F8B"  # teal/blue accent that complements the WITU palette
+SDPS_PRIMARY = "#0F4C81"   # Deep Indigo/Blue
+SDPS_SECONDARY = "#008080" # Teal
+SDPS_BLACK = "#1F2937"
+SDPS_WHITE = "#FFFFFF"
+SDPS_LIGHT = "#F3F4F6"
+SDPS_SOFT_BLUE = "#E0E7FF"
+SDPS_SOFT_TEAL = "#CCFBF1"
+SDPS_SOFT_GRAY = "#F9FAFB"
+SDPS_ACCENT = "#F59E0B"    # Amber/Gold accent
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "prediction_history.csv")
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "witulogo-removebg-preview.png")
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "logo__2_-removebg-preview.png")
 
 
 def load_logo_base64():
@@ -31,11 +31,11 @@ def load_logo_base64():
         return base64.b64encode(logo_file.read()).decode("utf-8")
 
 
-WITU_LOGO_BASE64 = load_logo_base64()
-WITU_LOGO_HTML = (
-    f'<img src="data:image/png;base64,{WITU_LOGO_BASE64}" alt="WITU logo" '
-    'style="height:72px; width:auto; object-fit:contain; flex-shrink:0;" />'
-    if WITU_LOGO_BASE64
+SDPS_LOGO_BASE64 = load_logo_base64()
+SDPS_LOGO_HTML = (
+    f'<img src="data:image/png;base64,{SDPS_LOGO_BASE64}" alt="SDPS logo" '
+    'style="height:90px; width:auto; object-fit:contain; flex-shrink:0; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />'
+    if SDPS_LOGO_BASE64
     else ""
 )
 def load_prediction_history():
@@ -83,14 +83,12 @@ def build_history_dataframe(history):
     return history_df
 
 # ============================================================================
-# STUDENT DROPOUT PREDICTION SYSTEM
-# Women In Technology Uganda (WITU)
+# STUDENT DROPOUT PREDICTION SYSTEM (SDPS)
 # Final Year Project: ML-Based Predictive Analytics for Early Dropout Identification
-# Model: Gradient Boosting with Class Balancing (Best Performing Model)
 # ============================================================================
 
 st.set_page_config(
-    page_title="Student Dropout Risk Prediction | WITU",
+    page_title="Student Dropout Risk Prediction | SDPS",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -108,7 +106,7 @@ st.markdown(f"""
         padding-right: 0.5rem;
     }}
     [data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, {WITU_BROWN} 0%, #4f2400 100%);
+        background: linear-gradient(180deg, {SDPS_PRIMARY} 0%, #4f2400 100%);
         box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08);
     }}
     [data-testid="stSidebar"] * {{
@@ -224,12 +222,12 @@ st.markdown(f"""
         color: #1f1f1f !important;
     }}
     [data-testid="stSidebar"] .stSlider [data-baseweb="slider"] div[role="slider"] {{
-        background: {WITU_ORANGE};
+        background: {SDPS_SECONDARY};
     }}
     [data-testid="stSidebar"] .stButton>button {{
-        background: {WITU_ORANGE};
+        background: {SDPS_SECONDARY};
         color: #ffffff;
-        border: 1px solid {WITU_ORANGE};
+        border: 1px solid {SDPS_SECONDARY};
         border-radius: 12px;
         font-weight: 700;
         width: 100%;
@@ -261,7 +259,7 @@ st.markdown(f"""
     }}
     .main-header {{
         font-size: 3.4em;
-        color: {WITU_ACCENT};
+        color: {SDPS_ACCENT};
         font-weight: 900;
         margin: 0;
         letter-spacing: -0.04em;
@@ -287,7 +285,7 @@ st.markdown(f"""
         flex: 0 0 220px;
     }}
     .hero-chip {{
-        background: {WITU_ORANGE};
+        background: {SDPS_SECONDARY};
         color: #ffffff;
         border-radius: 999px;
         padding: 8px 12px;
@@ -373,7 +371,7 @@ st.markdown(f"""
         gap: 12px;
         background: linear-gradient(135deg, #f4e7db 0%, #fff8ef 100%);
         border: 1px solid rgba(107, 50, 0, 0.18);
-        border-left: 6px solid {WITU_ORANGE};
+        border-left: 6px solid {SDPS_SECONDARY};
         color: #4f2400;
         border-radius: 14px;
         padding: 14px 16px;
@@ -387,7 +385,7 @@ st.markdown(f"""
         align-items: center;
         justify-content: center;
         border-radius: 999px;
-        background: {WITU_ORANGE};
+        background: {SDPS_SECONDARY};
         color: #ffffff;
         font-size: 1rem;
         flex: 0 0 34px;
@@ -469,10 +467,10 @@ st.markdown(f"""
         box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.12) !important;
         border-bottom: none !important;
     }}
-    /* Hover: use WITU_ACCENT (teal) instead of red/orange */
+    /* Hover: use SDPS_ACCENT (teal) instead of red/orange */
     div[data-testid="stTabs"] button[role="tab"]:hover {{
         background: linear-gradient(180deg, rgba(230,126,0,0.12) 0%, rgba(230,126,0,0.04) 100%);
-        color: {WITU_BROWN};
+        color: {SDPS_PRIMARY};
         border-color: rgba(230,126,0,0.18);
         box-shadow: 0 6px 16px rgba(230,126,0,0.12) !important;
         transform: translateY(-1px);
@@ -480,7 +478,7 @@ st.markdown(f"""
     /* Selected tab: stronger teal emphasis with no underline */
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {{
         /* Muted orange selected state */
-        background: linear-gradient(180deg, {WITU_ORANGE} 0%, #B85A00 100%);
+        background: linear-gradient(180deg, {SDPS_SECONDARY} 0%, #B85A00 100%);
         color: #FFFFFF;
         border-color: rgba(184, 90, 0, 0.28);
         box-shadow: 0 10px 20px rgba(184, 90, 0, 0.18) !important;
@@ -495,7 +493,7 @@ st.markdown(f"""
         right: 10px;
         bottom: -6px;
         height: 4px;
-        background: linear-gradient(90deg, {WITU_ORANGE} 0%, #DD6B20 100%);
+        background: linear-gradient(90deg, {SDPS_SECONDARY} 0%, #DD6B20 100%);
         border-radius: 6px;
         box-shadow: 0 6px 14px rgba(230,126,0,0.14);
         display: block;
@@ -529,17 +527,17 @@ st.markdown(f"""
 st.markdown(f"""
     <div class="hero-panel">
         <div style="display:flex; align-items:center; gap:18px; flex:1 1 520px; min-width: 320px;">
-            {WITU_LOGO_HTML}
+            {SDPS_LOGO_HTML}
             <div style="max-width: 720px;">
-                <h1 class="main-header">Student Dropout Risk Prediction</h1>
+                <h1 class="main-header">Student Dropout Risk Prediction System</h1>
                 <p class="subtitle">AI-assisted early warning dashboard for admission support</p>
                 <p class="hero-copy">Single student assessment, intake triage, and model intelligence in one view.</p>
             </div>
         </div>
         <div class="hero-meta">
-            <div class="hero-chip">Gradient Boosting model</div>
-            <div class="hero-chip">6 input features</div>
-            <div class="hero-chip">Early intervention focus</div>
+            <div class="hero-chip">AI-Powered System</div>
+            <div class="hero-chip">Protected Logic</div>
+            <div class="hero-chip">Early Intervention</div>
         </div>
     </div>
     """,
@@ -761,7 +759,28 @@ with st.sidebar.expander("Input Schema"):
     6. Previous qualification (grade)
     """)
 
-st.markdown("## Model Statistics")
+st.sidebar.markdown("---")
+st.sidebar.subheader("Admin Access")
+if not st.session_state.get("admin_logged_in", False):
+    username = st.sidebar.text_input("Username", key="login_user")
+    password = st.sidebar.text_input("Password", type="password", key="login_pass")
+    if st.sidebar.button("Login", type="secondary"):
+        import hashlib
+        pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+        # Hash for 'admin123'
+        if username == "admin" and pwd_hash == "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9":
+            st.session_state.admin_logged_in = True
+            st.sidebar.success("Logged in successfully.")
+            st.rerun()
+        else:
+            st.sidebar.error("Invalid credentials.")
+else:
+    st.sidebar.success("Logged in as Admin")
+    if st.sidebar.button("Logout"):
+        st.session_state.admin_logged_in = False
+        st.rerun()
+
+st.markdown("## System Statistics")
 
 total_assessments = len(st.session_state.prediction_history)
 high_risk_cases = sum(1 for item in st.session_state.prediction_history if item.get("risk_level") == "HIGH RISK")
@@ -791,7 +810,7 @@ def map_risk(prob):
     return "LOW RISK", "success"
 
 
-tab1, tab2, tab3 = st.tabs(["Individual Assessment", "Intake Triage", "Model Intelligence"])
+tab1, tab2 = st.tabs(["Individual Assessment", "Cohort Triage (Admin)"])
 
 with tab1:
     st.subheader("Individual Student Assessment")
@@ -908,195 +927,156 @@ with tab1:
 
     st.divider()
     st.subheader("Recent Assessments")
-    if st.session_state.history_notice:
-        st.markdown(
-            f'''
-            <div class="notice-success" role="status" aria-live="polite">
-                <div class="notice-success-icon">✓</div>
-                <div>
-                    <p class="notice-success-title">{st.session_state.history_notice["title"]}</p>
-                    <p class="notice-success-text">{st.session_state.history_notice["message"]}</p>
-                </div>
-            </div>
-            ''',
-            unsafe_allow_html=True,
-        )
-        st.session_state.history_notice = None
-    if st.session_state.prediction_history:
-        hist_df = build_history_dataframe(st.session_state.prediction_history)
-        history_view = hist_df.copy()
-        if "_history_index" in history_view.columns:
-            history_view = history_view.drop(columns=["_history_index"])
-        if "timestamp" in history_view.columns:
-            history_view["timestamp"] = history_view["timestamp"].fillna("")
-
-        st.dataframe(history_view.head(10), width="stretch")
-
-        button_col1, button_col2 = st.columns([1.5, 0.13])
-        with button_col2:
-            if not st.session_state.clear_timestamp_confirm:
-                if st.button("Clear History", use_container_width=True):
-                    st.session_state.clear_timestamp_confirm = True
-                    st.rerun()
-            else:
-                st.caption("Are you sure you want to clear timestamp history?")
-                confirm_col1, confirm_col2 = st.columns(2)
-                with confirm_col1:
-                    if st.button("Yes"):
-                        st.session_state.prediction_history = []
-                        save_prediction_history([])
-                        st.session_state.clear_timestamp_confirm = False
-                        st.session_state.history_notice = {
-                            "title": "History cleared",
-                            "message": "All recent assessment records have been removed.",
-                        }
-                        st.rerun()
-                with confirm_col2:
-                    if st.button("No"):
-                        st.session_state.clear_timestamp_confirm = False
-                        st.rerun()
+    
+    if not st.session_state.get("admin_logged_in", False):
+        st.info("🔒 Please log in as an Admin via the sidebar to view prediction history.")
     else:
-        st.caption("No assessments yet.")
+        if st.session_state.history_notice:
+            st.markdown(
+                f'''
+                <div class="notice-success" role="status" aria-live="polite">
+                    <div class="notice-success-icon">✓</div>
+                    <div>
+                        <p class="notice-success-title">{st.session_state.history_notice["title"]}</p>
+                        <p class="notice-success-text">{st.session_state.history_notice["message"]}</p>
+                    </div>
+                </div>
+                ''',
+                unsafe_allow_html=True,
+            )
+            st.session_state.history_notice = None
+        if st.session_state.prediction_history:
+            hist_df = build_history_dataframe(st.session_state.prediction_history)
+            history_view = hist_df.copy()
+            if "_history_index" in history_view.columns:
+                history_view = history_view.drop(columns=["_history_index"])
+            if "timestamp" in history_view.columns:
+                history_view["timestamp"] = history_view["timestamp"].fillna("")
+
+            st.dataframe(history_view.head(10), width="stretch")
+
+            button_col1, button_col2 = st.columns([1.5, 0.13])
+            with button_col2:
+                if not st.session_state.clear_timestamp_confirm:
+                    if st.button("Clear History", use_container_width=True):
+                        st.session_state.clear_timestamp_confirm = True
+                        st.rerun()
+                else:
+                    st.caption("Are you sure you want to clear timestamp history?")
+                    confirm_col1, confirm_col2 = st.columns(2)
+                    with confirm_col1:
+                        if st.button("Yes"):
+                            st.session_state.prediction_history = []
+                            save_prediction_history([])
+                            st.session_state.clear_timestamp_confirm = False
+                            st.session_state.history_notice = {
+                                "title": "History cleared",
+                                "message": "All recent assessment records have been removed.",
+                            }
+                            st.rerun()
+                    with confirm_col2:
+                        if st.button("No"):
+                            st.session_state.clear_timestamp_confirm = False
+                            st.rerun()
+        else:
+            st.caption("No assessments yet.")
 
 
 with tab2:
-    st.subheader("Cohort Triage and Operations")
-    uploaded = st.file_uploader(
-        "Upload cohort CSV",
-        type=["csv"],
-        help="First 6 columns must follow model input order: marital_status, nationality, special_needs, age, qualification, grade"
-    )
-
-    if uploaded:
-        try:
-            df_batch = pd.read_csv(uploaded)
-            if len(df_batch.columns) < 6:
-                st.error(f"Expected at least 6 columns, found {len(df_batch.columns)}")
-            else:
-                features = df_batch.iloc[:, :6].copy()
-                probs = model.predict_proba(features.values)[:, 1]
-
-                result_df = df_batch.copy()
-                result_df["Dropout_Probability"] = probs
-                result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
-                result_df["Priority_Score"] = result_df.apply(
-                    lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[3]), int(r.iloc[2]), float(r.iloc[5])),
-                    axis=1
-                )
-                result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
-                result_df["Assigned_Owner"] = result_df["Priority_Band"].apply(intervention_owner)
-
-                st.session_state.batch_results = result_df
-
-                total = len(result_df)
-                high_count = int((result_df["Dropout_Probability"] >= high_threshold).sum())
-                mod_count = int(((result_df["Dropout_Probability"] >= moderate_threshold) & (result_df["Dropout_Probability"] < high_threshold)).sum())
-                p1_count = int((result_df["Priority_Band"] == "P1 - Immediate").sum())
-
-                k1, k2, k3, k4 = st.columns(4)
-                with k1:
-                    st.metric("Cohort Size", total)
-                with k2:
-                    st.metric("High Risk", f"{high_count} ({(high_count / total) * 100:.1f}%)")
-                with k3:
-                    st.metric("Moderate Risk", f"{mod_count} ({(mod_count / total) * 100:.1f}%)")
-                with k4:
-                    st.metric("Immediate Priority", p1_count)
-
-                c1, c2 = st.columns(2)
-                with c1:
-                    fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.hist(result_df["Dropout_Probability"], bins=20, color=WITU_BROWN, edgecolor=WITU_BLACK)
-                    ax.axvline(moderate_threshold, color=WITU_ORANGE, linestyle="--", label="Moderate threshold")
-                    ax.axvline(high_threshold, color=WITU_BLACK, linestyle="--", label="High threshold")
-                    ax.set_facecolor(WITU_SOFT_GRAY)
-                    ax.set_title("Risk Probability Distribution")
-                    ax.set_xlabel("Dropout Probability")
-                    ax.set_ylabel("Students")
-                    ax.legend()
-                    st.pyplot(fig)
-                with c2:
-                    order = ["P1 - Immediate", "P2 - High", "P3 - Medium", "P4 - Routine"]
-                    priority_counts = result_df["Priority_Band"].value_counts().reindex(order, fill_value=0)
-                    fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.bar(priority_counts.index, priority_counts.values, color=[WITU_BROWN, WITU_ORANGE, "#8d6e63", "#c7b299"])
-                    ax.set_facecolor(WITU_SOFT_GRAY)
-                    ax.set_title("Operational Priority Queue")
-                    ax.set_ylabel("Students")
-                    ax.tick_params(axis="x", rotation=15)
-                    st.pyplot(fig)
-
-                st.markdown("**Triage Queue (highest priority first)**")
-                triage = result_df.sort_values(by=["Priority_Score", "Dropout_Probability"], ascending=False)
-                st.dataframe(triage.head(100), width="stretch", height=380)
-
-                csv_data = triage.to_csv(index=False)
-                triage_col1, triage_col2 = st.columns(2)
-                with triage_col1:
-                    st.download_button("Download Triage Plan", csv_data, "triage_plan.csv", "text/csv", use_container_width=True)
-                with triage_col2:
-                    if st.button("Clear Batch Results", use_container_width=True):
-                        st.session_state.batch_results = None
-                        st.success("Batch results cleared.")
-                        st.rerun()
-
-        except Exception as e:
-            st.error(f"Batch processing error: {str(e)}")
+    if not st.session_state.get("admin_logged_in", False):
+        st.warning("🔒 This section requires Admin access. Please log in via the sidebar.")
     else:
-        st.caption("Upload a cohort CSV to generate operational triage outputs.")
-
-
-with tab3:
-    st.subheader("Model Intelligence")
-    st.markdown("""
-    This system is an early warning decision-support tool. It prioritizes identifying at-risk students early so support teams can intervene quickly.
-    """)
-
-    info_c1, info_c2 = st.columns(2)
-    with info_c1:
-        st.markdown("**Model Profile**")
-        st.write("- Algorithm: Gradient Boosting with class balancing")
-        st.write("- Features: 6 admission-stage predictors")
-        st.write("- Target: Dropout vs Graduate")
-        st.write("- Objective: High recall on dropout class")
-    with info_c2:
-        st.markdown("**Governance Notes**")
-        st.write("- Use as decision support, not sole decision maker")
-        st.write("- Review false positives and false negatives each term")
-        st.write("- Update model with recent institutional data")
-        st.write("- Keep access restricted to authorized staff")
-
-    st.divider()
-    st.markdown("**Global Feature Importance**")
-    try:
-        feat_names = [
-            "Marital status",
-            "Nacionality",
-            "Educational special needs",
-            "Age at enrollment",
-            "Previous qualification",
-            "Previous qualification (grade)"
-        ]
-        importances = getattr(model, "feature_importances_", None)
-        if importances is not None and len(importances) == len(feat_names):
-            fi = pd.Series(importances, index=feat_names).sort_values(ascending=False)
-            fig_fi, ax_fi = plt.subplots(figsize=(9, 4))
-            sns.barplot(x=fi.values, y=fi.index, palette=[WITU_BROWN, WITU_ORANGE, "#8d6e63", "#c7b299", "#f0c9a8", "#f8e2d0"], ax=ax_fi)
-            ax_fi.set_facecolor(WITU_SOFT_GRAY)
-            ax_fi.set_xlabel("Importance")
-            ax_fi.set_ylabel("Feature")
-            st.pyplot(fig_fi)
-            st.caption("Higher values indicate stronger influence in model decisions.")
+        st.subheader("Cohort Triage and Operations")
+        uploaded = st.file_uploader(
+            "Upload cohort CSV",
+            type=["csv"],
+            help="First 6 columns must follow model input order: marital_status, nationality, special_needs, age, qualification, grade"
+        )
+    
+        if uploaded:
+            try:
+                df_batch = pd.read_csv(uploaded)
+                if len(df_batch.columns) < 6:
+                    st.error(f"Expected at least 6 columns, found {len(df_batch.columns)}")
+                else:
+                    features = df_batch.iloc[:, :6].copy()
+                    probs = model.predict_proba(features.values)[:, 1]
+    
+                    result_df = df_batch.copy()
+                    result_df["Dropout_Probability"] = probs
+                    result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
+                    result_df["Priority_Score"] = result_df.apply(
+                        lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[3]), int(r.iloc[2]), float(r.iloc[5])),
+                        axis=1
+                    )
+                    result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
+                    result_df["Assigned_Owner"] = result_df["Priority_Band"].apply(intervention_owner)
+    
+                    st.session_state.batch_results = result_df
+    
+                    total = len(result_df)
+                    high_count = int((result_df["Dropout_Probability"] >= high_threshold).sum())
+                    mod_count = int(((result_df["Dropout_Probability"] >= moderate_threshold) & (result_df["Dropout_Probability"] < high_threshold)).sum())
+                    p1_count = int((result_df["Priority_Band"] == "P1 - Immediate").sum())
+    
+                    k1, k2, k3, k4 = st.columns(4)
+                    with k1:
+                        st.metric("Cohort Size", total)
+                    with k2:
+                        st.metric("High Risk", f"{high_count} ({(high_count / total) * 100:.1f}%)")
+                    with k3:
+                        st.metric("Moderate Risk", f"{mod_count} ({(mod_count / total) * 100:.1f}%)")
+                    with k4:
+                        st.metric("Immediate Priority", p1_count)
+    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        fig, ax = plt.subplots(figsize=(8, 4))
+                        ax.hist(result_df["Dropout_Probability"], bins=20, color=SDPS_PRIMARY, edgecolor=SDPS_BLACK)
+                        ax.axvline(moderate_threshold, color=SDPS_SECONDARY, linestyle="--", label="Moderate threshold")
+                        ax.axvline(high_threshold, color=SDPS_BLACK, linestyle="--", label="High threshold")
+                        ax.set_facecolor(SDPS_SOFT_GRAY)
+                        ax.set_title("Risk Probability Distribution")
+                        ax.set_xlabel("Dropout Probability")
+                        ax.set_ylabel("Students")
+                        ax.legend()
+                        st.pyplot(fig)
+                    with c2:
+                        order = ["P1 - Immediate", "P2 - High", "P3 - Medium", "P4 - Routine"]
+                        priority_counts = result_df["Priority_Band"].value_counts().reindex(order, fill_value=0)
+                        fig, ax = plt.subplots(figsize=(8, 4))
+                        ax.bar(priority_counts.index, priority_counts.values, color=[SDPS_PRIMARY, SDPS_SECONDARY, "#8d6e63", "#c7b299"])
+                        ax.set_facecolor(SDPS_SOFT_GRAY)
+                        ax.set_title("Operational Priority Queue")
+                        ax.set_ylabel("Students")
+                        ax.tick_params(axis="x", rotation=15)
+                        st.pyplot(fig)
+    
+                    st.markdown("**Triage Queue (highest priority first)**")
+                    triage = result_df.sort_values(by=["Priority_Score", "Dropout_Probability"], ascending=False)
+                    st.dataframe(triage.head(100), width="stretch", height=380)
+    
+                    csv_data = triage.to_csv(index=False)
+                    triage_col1, triage_col2 = st.columns(2)
+                    with triage_col1:
+                        st.download_button("Download Triage Plan", csv_data, "triage_plan.csv", "text/csv", use_container_width=True)
+                    with triage_col2:
+                        if st.button("Clear Batch Results", use_container_width=True):
+                            st.session_state.batch_results = None
+                            st.success("Batch results cleared.")
+                            st.rerun()
+    
+            except Exception as e:
+                st.error(f"Batch processing error: {str(e)}")
         else:
-            st.info("Feature importance values are unavailable for this model artifact.")
-    except Exception as e:
-        st.info(f"Unable to compute feature importance: {e}")
-
-
+            st.caption("Upload a cohort CSV to generate operational triage outputs.")
+    
+    
+    
 st.divider()
 st.markdown("""
 <div style='text-align:center; padding: 8px 0 18px 0; color: #6f6f6f; font-size: 0.95rem; line-height: 1.5;'>
-<div style='font-weight: 700; color: #1f1f1f; margin-bottom: 4px;'>Student Dropout Risk Prediction System | WITU</div>
+<div style='font-weight: 700; color: #1f1f1f; margin-bottom: 4px;'>Student Dropout Risk Prediction System | SDPS</div>
 Decision support for early intervention and retention strategy execution.
 </div>
 """, unsafe_allow_html=True)
