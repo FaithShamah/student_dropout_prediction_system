@@ -138,16 +138,14 @@ st.markdown(f"""
         box-shadow: none !important;
         outline: none !important;
     }}
-    [data-testid="stSidebar"] [data-testid="stTextInputRootElement"]:has(input[aria-label="Age at Enrollment"]),
-    [data-testid="stSidebar"] [data-testid="stTextInputRootElement"]:has(input[aria-label="Qualification Grade (0-200)"]) {{
+    [data-testid="stSidebar"] [data-testid="stTextInputRootElement"]:has(input[aria-label="Age at Enrollment"]) {{
         border: 1px solid #dbc4b3 !important;
         box-shadow: none !important;
         outline: none !important;
         border-radius: 12px;
         background-color: #ffffff !important;
     }}
-    [data-testid="stSidebar"] [data-testid="stTextInputRootElement"]:has(input[aria-label="Age at Enrollment"]):focus-within,
-    [data-testid="stSidebar"] [data-testid="stTextInputRootElement"]:has(input[aria-label="Qualification Grade (0-200)"]):focus-within {{
+    [data-testid="stSidebar"] [data-testid="stTextInputRootElement"]:has(input[aria-label="Age at Enrollment"]):focus-within {{
         border: 1px solid #dbc4b3 !important;
         box-shadow: none !important;
         outline: none !important;
@@ -579,58 +577,35 @@ SPECIAL_NEEDS = {
 }
 
 QUALIFICATION = {
-    "Secondary Education": 1,
-    "Higher Education - Bachelor's": 2,
-    "Higher Education - Degree (1st cycle)": 40,
-    "Higher Education - Master's": 4,
-    "Higher Education - Doctorate": 5,
-    "Basic Education (3rd cycle)": 19,
-    "Technological specialization": 39,
-    "Professional higher technical": 42,
-    "Not completed (12th year)": 9,
-    "Not completed (11th year)": 10,
-    "Other / Vocational": 0
+    "UACE Certificate": 1,
+    "Diploma": 42,
+    "Bachelor's Degree": 2,
+    "Degree": 3,
+    "Master's Degree": 4,
+    "Doctorate": 5,
+    "Technical Certificate": 39
 }
 
 APPLICATION_MODE = {
-    "1st phase - general contingent": 1,
-    "Ordinance No. 612/93": 2,
-    "1st phase - special contingent (Azores Island)": 5,
-    "Holders of other higher courses": 7,
-    "Ordinance No. 854-B/99": 10,
-    "International student (bachelor)": 15,
-    "1st phase - special contingent (Madeira Island)": 16,
-    "2nd phase - general contingent": 17,
-    "3rd phase - general contingent": 18,
-    "Ordinance No. 533-A/99, item b2 (Different Plan)": 26,
-    "Ordinance No. 533-A/99, item b3 (Other Institution)": 27,
-    "Over 23 years old": 39,
-    "Transfer": 42,
-    "Change of course": 43,
-    "Technological specialization diploma holders": 44,
-    "Change of institution/course": 51,
-    "Short cycle diploma holders": 53,
-    "Change of institution/course (International)": 57
+    "Direct Entry (UACE)": 1,
+    "Diploma Entry": 7,
+    "International Student": 15,
+    "Mature Age Entry": 39,
+    "Transfer Student": 42,
+    "Change of Course": 43,
+    "Technical/Vocational Entry": 44,
+    "Other Admission Route": 51
 }
 
 COURSE = {
-    "Biofuel Production Technologies": 33,
-    "Animation and Multimedia Design": 171,
-    "Social Service (evening attendance)": 8014,
-    "Agronomy": 9003,
-    "Communication Design": 9070,
-    "Veterinary Nursing": 9085,
-    "Informatics Engineering": 9119,
-    "Equinculture": 9130,
-    "Management": 9147,
-    "Social Service": 9238,
+    "Computer Science / IT": 9119,
+    "Business & Management": 9147,
     "Tourism": 9254,
     "Nursing": 9500,
-    "Oral Hygiene": 9556,
-    "Advertising and Marketing Management": 9670,
-    "Journalism and Communication": 9773,
-    "Basic Education": 9853,
-    "Management (evening attendance)": 9991
+    "Journalism & Communication": 9773,
+    "Education": 9853,
+    "Agriculture": 9003,
+    "Marketing": 9670
 }
 
 # ============================================================================
@@ -645,20 +620,16 @@ def get_risk_category(prob):
     else:
         return "LOW RISK", "success"
 
-def validate_inputs(age, grade):
+def validate_inputs(age):
     """Validate student inputs"""
     warnings_list = []
     if age < 18:
         warnings_list.append("⚠️ Student is under 18 (early enrollment)")
     if age > 35:
         warnings_list.append("⚠️ Mature student (age > 35) - may indicate career change")
-    if grade < 50:
-        warnings_list.append("⚠️ Very low previous grade - additional support recommended")
-    if grade > 180:
-        warnings_list.append("✓ Excellent previous grade - positive indicator")
     return warnings_list
 
-def generate_recommendations(prob, age, marital, special_needs, grade):
+def generate_recommendations(prob, age, marital, special_needs):
     """Generate personalized intervention recommendations"""
     recs = []
     
@@ -689,8 +660,6 @@ def generate_recommendations(prob, age, marital, special_needs, grade):
         recs.append("Assess work-life-study balance challenges")
     if special_needs == 1:
         recs.append("Verify all accessibility accommodations are active")
-    if grade < 100:
-        recs.append("Enroll in foundational/bridge courses if available")
     
     return recs
 
@@ -717,29 +686,24 @@ def intervention_owner(priority):
     return "Student Support Desk"
 
 
-def compute_priority_score(prob, age, special_needs, grade):
+def compute_priority_score(prob, age, special_needs):
     score = prob * 100
-    score += max(0, 100 - grade) / 4
     score += 10 if special_needs == 1 else 0
     score += 5 if (age < 18 or age >= 30) else 0
     return float(min(100, round(score, 2)))
 
 
-# Sidebar for single prediction and policy controls
-st.sidebar.header("Assessment Controls")
-st.sidebar.markdown("---")
-
-moderate_threshold = st.sidebar.slider("Moderate risk threshold", min_value=0.20, max_value=0.70, value=0.40, step=0.05)
-high_threshold = st.sidebar.slider("High risk threshold", min_value=float(moderate_threshold + 0.05), max_value=0.95, value=float(max(0.70, moderate_threshold + 0.05)), step=0.05)
+moderate_threshold = 0.40
+high_threshold = 0.70
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Single Student Input")
 
 marital = st.sidebar.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
-application_mode = st.sidebar.selectbox("Admission Type", list(APPLICATION_MODE.keys()), index=None, placeholder="Select admission type", key="application_mode")
-application_order = st.sidebar.slider("Application Order", 0, 9, 1)
+application_mode = st.sidebar.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
+application_order = st.sidebar.number_input("Application Order", min_value=0, max_value=9, value=1, step=1)
 course = st.sidebar.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
-attendance = st.sidebar.selectbox("Attendance", ["Day", "Evening"], index=None, placeholder="Select attendance", key="attendance")
+attendance = st.sidebar.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select attendance", key="attendance")
 qualification = st.sidebar.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
 displaced = st.sidebar.selectbox("Displaced", ["No", "Yes"], index=None, placeholder="Select displaced status", key="displaced")
 special = st.sidebar.selectbox("Special Needs", list(SPECIAL_NEEDS.keys()), index=None, placeholder="Select special needs", key="special")
@@ -747,7 +711,6 @@ gender = st.sidebar.selectbox("Gender", ["Female", "Male"], index=None, placehol
 scholarship = st.sidebar.selectbox("Scholarship Holder", ["No", "Yes"], index=None, placeholder="Select scholarship status", key="scholarship")
 international = st.sidebar.selectbox("International", ["No", "Yes"], index=None, placeholder="Select international status", key="international")
 age_text = st.sidebar.text_input("Age at Enrollment", placeholder="Enter age (18 or above)", key="age")
-grade_text = st.sidebar.text_input("Qualification Grade (0-200)", placeholder="Enter previous qualification grade", key="grade")
 
 if age_text.strip():
     try:
@@ -758,16 +721,6 @@ if age_text.strip():
             st.sidebar.info("⚠️ Mature student (age > 35) - may indicate career change")
     except ValueError:
         st.sidebar.error("Age must be a whole number.")
-
-if grade_text.strip():
-    try:
-        grade_preview = float(grade_text)
-        if grade_preview < 50:
-            st.sidebar.info("⚠️ Very low previous grade - additional support recommended")
-        elif grade_preview > 180:
-            st.sidebar.info("✓ Excellent previous grade - positive indicator")
-    except ValueError:
-        st.sidebar.error("Qualification Grade must be a number.")
 
 predict_clicked = st.sidebar.button("Run Assessment", width="stretch", type="primary")
 
@@ -877,15 +830,7 @@ with tab1:
                 st.error("Age must be a whole number.")
                 st.stop()
 
-        if not grade_text.strip():
-            missing_fields.append("Qualification Grade")
-            grade_value = None
-        else:
-            try:
-                grade_value = float(grade_text)
-            except ValueError:
-                st.error("Qualification Grade must be a number.")
-                st.stop()
+        # Removed grade validation
 
         if missing_fields:
             st.error(f"Please complete all required fields before running the assessment: {', '.join(missing_fields)}.")
@@ -897,7 +842,7 @@ with tab1:
 
         application_mode_code = APPLICATION_MODE[application_mode]
         course_code = COURSE[course]
-        attendance_code = 1 if attendance == "Day" else 0
+        attendance_code = 1 if attendance == "Daytime" else 0
         displaced_code = 1 if displaced == "Yes" else 0
         gender_code = 1 if gender == "Male" else 0
         scholarship_code = 1 if scholarship == "Yes" else 0
@@ -908,7 +853,7 @@ with tab1:
             "Application mode": [application_mode_code],
             "Application order": [application_order],
             "Course": [course_code],
-            "Daytime/evening attendance": [attendance_code],
+            "Daytime/evening attendance\t": [attendance_code],
             "Previous qualification": [QUALIFICATION[qualification]],
             "Displaced": [displaced_code],
             "Educational special needs": [SPECIAL_NEEDS[special]],
@@ -923,7 +868,7 @@ with tab1:
             prob_graduate = 1 - prob_dropout
             risk_label, risk_type = map_risk(prob_dropout)
 
-            priority_score = compute_priority_score(prob_dropout, age_value, SPECIAL_NEEDS[special], grade_value)
+            priority_score = compute_priority_score(prob_dropout, age_value, SPECIAL_NEEDS[special])
             priority_band = classify_priority(priority_score)
             owner = intervention_owner(priority_band)
 
@@ -933,7 +878,6 @@ with tab1:
                 "marital": marital,
                 "course": course,
                 "qualification": qualification,
-                "grade": grade_value,
                 "risk_prob": prob_dropout,
                 "risk_level": risk_label,
                 "priority_score": priority_score,
@@ -972,7 +916,7 @@ with tab1:
                 st.write("- Suggested first action window: 24-72 hours" if priority_band in ["P1 - Immediate", "P2 - High"] else "- Suggested first action window: within 7 days")
 
             st.markdown("**Recommended Actions**")
-            for idx, rec in enumerate(generate_recommendations(prob_dropout, age_value, MARITAL_STATUS[marital], SPECIAL_NEEDS[special], grade_value), 1):
+            for idx, rec in enumerate(generate_recommendations(prob_dropout, age_value, MARITAL_STATUS[marital], SPECIAL_NEEDS[special]), 1):
                 st.write(f"{idx}. {rec}")
 
         except Exception as e:
@@ -1061,7 +1005,7 @@ with tab2:
                     result_df["Dropout_Probability"] = probs
                     result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
                     result_df["Priority_Score"] = result_df.apply(
-                        lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[10]), int(r.iloc[7]), 100),
+                        lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[10]), int(r.iloc[7])),
                         axis=1
                     )
                     result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
