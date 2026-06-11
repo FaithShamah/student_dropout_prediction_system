@@ -34,7 +34,7 @@ def load_logo_base64():
 SDPS_LOGO_BASE64 = load_logo_base64()
 SDPS_LOGO_HTML = (
     f'<img src="data:image/png;base64,{SDPS_LOGO_BASE64}" alt="SDPS logo" '
-    'style="height:90px; width:auto; object-fit:contain; flex-shrink:0; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />'
+    'style="height:140px; width:140px; object-fit:contain; flex-shrink:0; border-radius: 50%; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 4px solid #ffffff;" />'
     if SDPS_LOGO_BASE64
     else ""
 )
@@ -278,11 +278,11 @@ st.markdown(f"""
         margin: 0;
     }}
     .hero-meta {{
-        min-width: 200px;
-        max-width: 220px;
-        display: grid;
-        gap: 10px;
-        flex: 0 0 220px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 160px;
+        flex: 0 0 160px;
     }}
     .hero-chip {{
         background: {SDPS_SECONDARY};
@@ -526,18 +526,13 @@ st.markdown(f"""
 
 st.markdown(f"""
     <div class="hero-panel">
-        <div style="display:flex; align-items:center; gap:18px; flex:1 1 520px; min-width: 320px;">
-            {SDPS_LOGO_HTML}
-            <div style="max-width: 720px;">
-                <h1 class="main-header">Student Dropout Risk Prediction System</h1>
-                <p class="subtitle">AI-assisted early warning dashboard for admission support</p>
-                <p class="hero-copy">Single student assessment, intake triage, and model intelligence in one view.</p>
-            </div>
+        <div style="display:flex; flex-direction:column; justify-content:center; flex:1 1 520px; min-width: 320px;">
+            <h1 class="main-header">Student Dropout Risk Prediction System</h1>
+            <p class="subtitle">AI-assisted early warning dashboard for admission support</p>
+            <p class="hero-copy">Single student assessment, intake triage, and model intelligence in one view.</p>
         </div>
         <div class="hero-meta">
-            <div class="hero-chip">AI-Powered System</div>
-            <div class="hero-chip">Protected Logic</div>
-            <div class="hero-chip">Early Intervention</div>
+            {SDPS_LOGO_HTML}
         </div>
     </div>
     """,
@@ -597,22 +592,45 @@ QUALIFICATION = {
     "Other / Vocational": 0
 }
 
-NATIONALITY = {
-    "Portuguese": 1,
-    "Angolan": 21,
-    "Mozambican": 25,
-    "Brazilian": 41,
-    "German": 2,
-    "Spanish": 6,
-    "Italian": 11,
-    "English": 14,
-    "Cape Verdean": 22,
-    "Guinean": 24,
-    "Santomean": 26,
-    "Turkish": 32,
-    "Mexican": 101,
-    "Colombian": 109,
-    "Other": 0
+APPLICATION_MODE = {
+    "1st phase - general contingent": 1,
+    "Ordinance No. 612/93": 2,
+    "1st phase - special contingent (Azores Island)": 5,
+    "Holders of other higher courses": 7,
+    "Ordinance No. 854-B/99": 10,
+    "International student (bachelor)": 15,
+    "1st phase - special contingent (Madeira Island)": 16,
+    "2nd phase - general contingent": 17,
+    "3rd phase - general contingent": 18,
+    "Ordinance No. 533-A/99, item b2 (Different Plan)": 26,
+    "Ordinance No. 533-A/99, item b3 (Other Institution)": 27,
+    "Over 23 years old": 39,
+    "Transfer": 42,
+    "Change of course": 43,
+    "Technological specialization diploma holders": 44,
+    "Change of institution/course": 51,
+    "Short cycle diploma holders": 53,
+    "Change of institution/course (International)": 57
+}
+
+COURSE = {
+    "Biofuel Production Technologies": 33,
+    "Animation and Multimedia Design": 171,
+    "Social Service (evening attendance)": 8014,
+    "Agronomy": 9003,
+    "Communication Design": 9070,
+    "Veterinary Nursing": 9085,
+    "Informatics Engineering": 9119,
+    "Equinculture": 9130,
+    "Management": 9147,
+    "Social Service": 9238,
+    "Tourism": 9254,
+    "Nursing": 9500,
+    "Oral Hygiene": 9556,
+    "Advertising and Marketing Management": 9670,
+    "Journalism and Communication": 9773,
+    "Basic Education": 9853,
+    "Management (evening attendance)": 9991
 }
 
 # ============================================================================
@@ -711,18 +729,23 @@ def compute_priority_score(prob, age, special_needs, grade):
 st.sidebar.header("Assessment Controls")
 st.sidebar.markdown("---")
 
-moderate_threshold = st.sidebar.slider("Moderate risk threshold", min_value=0.20, max_value=0.80, value=0.40, step=0.05)
-high_threshold = st.sidebar.slider("High risk threshold", min_value=0.30, max_value=0.95, value=0.70, step=0.05)
-if high_threshold <= moderate_threshold:
-    st.sidebar.warning("High threshold should be greater than moderate threshold.")
+moderate_threshold = st.sidebar.slider("Moderate risk threshold", min_value=0.20, max_value=0.70, value=0.40, step=0.05)
+high_threshold = st.sidebar.slider("High risk threshold", min_value=float(moderate_threshold + 0.05), max_value=0.95, value=float(max(0.70, moderate_threshold + 0.05)), step=0.05)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Single Student Input")
 
 marital = st.sidebar.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
-nationality = st.sidebar.selectbox("Nationality", list(NATIONALITY.keys()), index=None, placeholder="Select nationality", key="nationality")
-special = st.sidebar.selectbox("Special Needs", list(SPECIAL_NEEDS.keys()), index=None, placeholder="Select special needs", key="special")
+application_mode = st.sidebar.selectbox("Admission Type", list(APPLICATION_MODE.keys()), index=None, placeholder="Select admission type", key="application_mode")
+application_order = st.sidebar.slider("Application Order", 0, 9, 1)
+course = st.sidebar.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
+attendance = st.sidebar.selectbox("Attendance", ["Day", "Evening"], index=None, placeholder="Select attendance", key="attendance")
 qualification = st.sidebar.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
+displaced = st.sidebar.selectbox("Displaced", ["No", "Yes"], index=None, placeholder="Select displaced status", key="displaced")
+special = st.sidebar.selectbox("Special Needs", list(SPECIAL_NEEDS.keys()), index=None, placeholder="Select special needs", key="special")
+gender = st.sidebar.selectbox("Gender", ["Female", "Male"], index=None, placeholder="Select gender", key="gender")
+scholarship = st.sidebar.selectbox("Scholarship Holder", ["No", "Yes"], index=None, placeholder="Select scholarship status", key="scholarship")
+international = st.sidebar.selectbox("International", ["No", "Yes"], index=None, placeholder="Select international status", key="international")
 age_text = st.sidebar.text_input("Age at Enrollment", placeholder="Enter age (18 or above)", key="age")
 grade_text = st.sidebar.text_input("Qualification Grade (0-200)", placeholder="Enter previous qualification grade", key="grade")
 
@@ -752,11 +775,17 @@ with st.sidebar.expander("Input Schema"):
     st.markdown("""
     Required model input order:
     1. Marital status
-    2. Nacionality
-    3. Educational special needs
-    4. Age at enrollment
-    5. Previous qualification
-    6. Previous qualification (grade)
+    2. Application mode
+    3. Application order
+    4. Course
+    5. Attendance
+    6. Previous qualification
+    7. Displaced
+    8. Special needs
+    9. Gender
+    10. Scholarship holder
+    11. Age
+    12. International
     """)
 
 st.sidebar.markdown("---")
@@ -819,12 +848,24 @@ with tab1:
 
         if marital is None:
             missing_fields.append("Marital Status")
-        if nationality is None:
-            missing_fields.append("Nationality")
-        if special is None:
-            missing_fields.append("Special Needs")
+        if application_mode is None:
+            missing_fields.append("Application Mode")
+        if course is None:
+            missing_fields.append("Course")
+        if attendance is None:
+            missing_fields.append("Attendance")
         if qualification is None:
             missing_fields.append("Previous Qualification")
+        if displaced is None:
+            missing_fields.append("Displaced")
+        if special is None:
+            missing_fields.append("Special Needs")
+        if gender is None:
+            missing_fields.append("Gender")
+        if scholarship is None:
+            missing_fields.append("Scholarship Holder")
+        if international is None:
+            missing_fields.append("International")
 
         if not age_text.strip():
             missing_fields.append("Age at Enrollment")
@@ -854,17 +895,31 @@ with tab1:
             st.error("Age must be 18 or above to run the assessment.")
             st.stop()
 
-        input_values = np.array([[
-            MARITAL_STATUS[marital],
-            NATIONALITY[nationality],
-            SPECIAL_NEEDS[special],
-            age_value,
-            QUALIFICATION[qualification],
-            grade_value
-        ]])
+        application_mode_code = APPLICATION_MODE[application_mode]
+        course_code = COURSE[course]
+        attendance_code = 1 if attendance == "Day" else 0
+        displaced_code = 1 if displaced == "Yes" else 0
+        gender_code = 1 if gender == "Male" else 0
+        scholarship_code = 1 if scholarship == "Yes" else 0
+        international_code = 1 if international == "Yes" else 0
+
+        input_data = pd.DataFrame({
+            "Marital status": [MARITAL_STATUS[marital]],
+            "Application mode": [application_mode_code],
+            "Application order": [application_order],
+            "Course": [course_code],
+            "Daytime/evening attendance": [attendance_code],
+            "Previous qualification": [QUALIFICATION[qualification]],
+            "Displaced": [displaced_code],
+            "Educational special needs": [SPECIAL_NEEDS[special]],
+            "Gender": [gender_code],
+            "Scholarship holder": [scholarship_code],
+            "Age at enrollment": [age_value],
+            "International": [international_code]
+        })
 
         try:
-            prob_dropout = float(model.predict_proba(input_values)[0][1])
+            prob_dropout = float(model.predict_proba(input_data)[0][1])
             prob_graduate = 1 - prob_dropout
             risk_label, risk_type = map_risk(prob_dropout)
 
@@ -876,7 +931,7 @@ with tab1:
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "age": age_value,
                 "marital": marital,
-                "nationality": nationality,
+                "course": course,
                 "qualification": qualification,
                 "grade": grade_value,
                 "risk_prob": prob_dropout,
@@ -908,7 +963,7 @@ with tab1:
                 st.markdown("**Student Context**")
                 st.write(f"- Age: {age_value}")
                 st.write(f"- Marital status: {marital}")
-                st.write(f"- Nationality: {nationality}")
+                st.write(f"- Course: {course}")
                 st.write(f"- Special needs: {special}")
             with c2:
                 st.markdown("**Intervention Routing**")
@@ -990,23 +1045,23 @@ with tab2:
         uploaded = st.file_uploader(
             "Upload cohort CSV",
             type=["csv"],
-            help="First 6 columns must follow model input order: marital_status, nationality, special_needs, age, qualification, grade"
+            help="First 12 columns must follow model input order."
         )
     
         if uploaded:
             try:
                 df_batch = pd.read_csv(uploaded)
-                if len(df_batch.columns) < 6:
-                    st.error(f"Expected at least 6 columns, found {len(df_batch.columns)}")
+                if len(df_batch.columns) < 12:
+                    st.error(f"Expected at least 12 columns, found {len(df_batch.columns)}")
                 else:
-                    features = df_batch.iloc[:, :6].copy()
+                    features = df_batch.iloc[:, :12].copy()
                     probs = model.predict_proba(features.values)[:, 1]
     
                     result_df = df_batch.copy()
                     result_df["Dropout_Probability"] = probs
                     result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
                     result_df["Priority_Score"] = result_df.apply(
-                        lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[3]), int(r.iloc[2]), float(r.iloc[5])),
+                        lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[10]), int(r.iloc[7]), 100),
                         axis=1
                     )
                     result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
