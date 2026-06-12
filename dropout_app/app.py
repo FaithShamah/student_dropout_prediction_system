@@ -8,7 +8,11 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
+from dotenv import load_dotenv
+from database import Database
+
 warnings.filterwarnings("ignore")
+load_dotenv()  # Load environment variables from .env file
 
 SDPS_PRIMARY = "#0F4C81"   # Deep Indigo/Blue
 SDPS_SECONDARY = "#008080" # Teal
@@ -19,8 +23,11 @@ SDPS_SOFT_BLUE = "#E0E7FF"
 SDPS_SOFT_TEAL = "#CCFBF1"
 SDPS_SOFT_GRAY = "#F9FAFB"
 SDPS_ACCENT = "#F59E0B"    # Amber/Gold accent
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), "prediction_history.csv")
+
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "logo__2_-removebg-preview.png")
+
+moderate_threshold = 0.40
+high_threshold = 0.70
 
 
 def load_logo_base64():
@@ -38,33 +45,47 @@ SDPS_LOGO_HTML = (
     if SDPS_LOGO_BASE64
     else ""
 )
-def load_prediction_history():
-    if not os.path.exists(HISTORY_FILE):
-        return []
 
-    try:
-        history_df = pd.read_csv(HISTORY_FILE)
-        if history_df.empty:
-            return []
-        history_df = history_df.fillna("")
-        return history_df.to_dict(orient="records")
-    except Exception:
-        return []
+# ============================================================================
+# DATABASE SETUP
+# ============================================================================
+@st.cache_resource
+def init_database():
+    """Initialize database with Render-compatible path"""
+    db_path = os.getenv("PERSISTENT_DB_PATH", "sdps.db")
+    return Database(db_path)
+
+# Update init_admin_user to use the new path
+def init_admin_user():
+    db = init_database()  
+    
+    if not db.admin_exists():
+        # Check environment variables first
+        admin_username = os.getenv("ADMIN_USERNAME", "admin")
+        admin_password = os.getenv("ADMIN_PASSWORD", "SDPSAdmin@2024!")
+        admin_email = os.getenv("ADMIN_EMAIL", "admin@gmail.com")
+        
+        # Create default admin
+        db.create_admin(admin_username, admin_password, admin_email)
+    
+    return db
+
+# ============================================================================
+# LEGACY CSV FUNCTIONS (for backward compatibility - can be removed later)
+# ============================================================================
+def load_prediction_history():
+    """Load prediction history from database"""
+    db = get_database()
+    return db.get_all_predictions()
 
 
 def save_prediction_history(history):
-    if not history:
-        if os.path.exists(HISTORY_FILE):
-            os.remove(HISTORY_FILE)
-        return
-
-    history_df = pd.DataFrame(history).fillna("")
-    if "timestamp" in history_df.columns:
-        history_df["timestamp"] = history_df["timestamp"].astype(str).replace({"nan": "", "None": ""})
-    history_df.to_csv(HISTORY_FILE, index=False)
+    """Legacy function - no longer needed with database"""
+    pass  # Database saves predictions automatically
 
 
 def build_history_dataframe(history):
+    """Build dataframe from prediction history"""
     history_df = pd.DataFrame(history)
     if history_df.empty:
         return history_df
@@ -83,10 +104,155 @@ def build_history_dataframe(history):
     return history_df
 
 # ============================================================================
+# AUTHENTICATION FUNCTIONS
+# ============================================================================
+def login_page():
+    """Display professional login page"""
+    st.markdown("""
+        <style>
+        .main {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .stTextInput label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+        .stTextInput input {
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            padding: 12px 16px;
+            font-size: 0.95em;
+            transition: border-color 0.2s;
+        }
+        .stTextInput input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .stButton button[kind="primary"] {
+            border-radius: 10px;
+            padding: 12px 24px;
+            font-weight: 600;
+            font-size: 1em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .stButton button[kind="primary"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        div[data-testid="stForm"] {
+            background: #ffffff;
+            padding: 45px 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+        .login-title {
+            font-size: 1.8em;
+            color: #2d3748;
+            font-weight: 700;
+            margin: 20px 0 0 0;
+            line-height: 1;
+            padding-bottom: 0;
+        }
+        .login-subtitle {
+            font-size: 0.9em;
+            color: #718096;
+            font-weight: 600;
+            margin: 0;
+            padding-top: 2px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    SDPS_LOGO_BASE64 = load_logo_base64()
+    SDPS_LOGO_HTML = (
+        f'<img src="data:image/png;base64,{SDPS_LOGO_BASE64}" alt="SDPS" '
+        'style="height:100px; width:100px; border-radius: 50%; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 4px solid #ffffff;" />'
+        if SDPS_LOGO_BASE64
+        else ""
+    )
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.form("admin_login_form", clear_on_submit=False):
+            st.markdown(f"""
+                <div class="login-header">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        {SDPS_LOGO_HTML}
+                    </div>
+                    <h1 class="login-title">Admin Login</h1>
+                    <p class="login-subtitle">Student Dropout Prediction System</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            username = st.text_input("Username", placeholder="Enter your username", key="login_username")
+            email = st.text_input("Email", placeholder="Enter your email", key="login_email")
+            password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
+            
+            submit_button = st.form_submit_button("Sign In", type="primary", use_container_width=True)
+            
+            if submit_button:
+                if username and email and password:
+                    # Validate email format
+                    import re
+                    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                    if not re.match(email_pattern, email):
+                        st.error("Please enter a valid email address (e.g., user@gmail.com)")
+                    else:
+                        db = get_database()
+                        if db.verify_admin(username, password, email=email):
+                            st.session_state.logged_in = True
+                            st.session_state.username = username
+                            st.success("Authentication successful")
+                            st.rerun()
+                        else:
+                            st.error("Invalid credentials. Please check username, email and password.")
+                else:
+                    st.warning("Please fill in all fields")
+
+def logout():
+    """Handle logout"""
+    st.session_state.logged_in = False
+    st.session_state.username = None
+    st.rerun()
+
+# ============================================================================
 # STUDENT DROPOUT PREDICTION SYSTEM (SDPS)
 # Final Year Project: ML-Based Predictive Analytics for Early Dropout Identification
 # ============================================================================
 
+# ============================================================================
+# MAIN APPLICATION
+# ============================================================================
+# Initialize database and admin user
+init_admin_user()
+
+# Check authentication status
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+# Show login page if not authenticated
+if not st.session_state.logged_in:
+    st.set_page_config(
+        page_title="SDPS Login",
+        layout="centered",
+        initial_sidebar_state="collapsed"
+    )
+    login_page()
+    st.stop()
+
+# ============================================================================
+# DASHBOARD (shown after successful login)
+# ============================================================================
 st.set_page_config(
     page_title="Student Dropout Risk Prediction | SDPS",
     layout="wide",
@@ -106,8 +272,8 @@ st.markdown(f"""
         padding-right: 0.5rem;
     }}
     [data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, {SDPS_PRIMARY} 0%, #4f2400 100%);
-        box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08);
+        background: linear-gradient(180deg, {SDPS_PRIMARY} 0%, #084070 100%);
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
     }}
     [data-testid="stSidebar"] * {{
         color: #ffffff;
@@ -117,25 +283,34 @@ st.markdown(f"""
     [data-testid="stSidebar"] .stCaption {{
         color: #ffffff;
     }}
+    [data-testid="stSidebar"] .stMarkdown h2 {{
+        color: #ffffff;
+        font-size: 1.2em;
+        font-weight: 600;
+        margin-top: 0;
+        padding-bottom: 8px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }}
     [data-testid="stSidebar"] input,
     [data-testid="stSidebar"] textarea {{
         background-color: #ffffff !important;
         color: #1f1f1f !important;
         -webkit-text-fill-color: #1f1f1f !important;
         caret-color: #000000 !important;
-        border: 1px solid #dbc4b3 !important;
+        border: 1px solid #d1d5db !important;
         box-shadow: none !important;
         outline: none !important;
         appearance: none !important;
         -webkit-appearance: none !important;
+        border-radius: 8px;
     }}
     [data-testid="stSidebar"] input:focus,
     [data-testid="stSidebar"] textarea:focus {{
         color: #1f1f1f !important;
         -webkit-text-fill-color: #1f1f1f !important;
         caret-color: #000000 !important;
-        border: 1px solid #dbc4b3 !important;
-        box-shadow: none !important;
+        border: 1px solid {SDPS_SECONDARY} !important;
+        box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.1) !important;
         outline: none !important;
     }}
     [data-testid="stSidebar"] [data-testid="stTextInputRootElement"]:has(input[aria-label="Age at Enrollment"]) {{
@@ -162,8 +337,8 @@ st.markdown(f"""
         background-color: #ffffff !important;
         color: #1f1f1f !important;
         -webkit-text-fill-color: #1f1f1f !important;
-        border: 1px solid #dbc4b3 !important;
-        border-radius: 12px;
+        border: 1px solid #d1d5db !important;
+        border-radius: 8px;
     }}
     [data-testid="stSidebar"] [data-baseweb="select"] input {{
         position: absolute !important;
@@ -223,16 +398,19 @@ st.markdown(f"""
         background: {SDPS_SECONDARY};
     }}
     [data-testid="stSidebar"] .stButton>button {{
-        background: {SDPS_SECONDARY};
+        background: linear-gradient(135deg, {SDPS_SECONDARY} 0%, #006666 100%);
         color: #ffffff;
-        border: 1px solid {SDPS_SECONDARY};
-        border-radius: 12px;
-        font-weight: 700;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
         width: 100%;
+        padding: 10px 16px;
+        transition: all 0.2s ease;
     }}
     [data-testid="stSidebar"] .stButton>button:hover {{
-        background: #cf6f00;
-        border-color: #cf6f00;
+        background: linear-gradient(135deg, #006666 0%, {SDPS_SECONDARY} 100%);
+        box-shadow: 0 4px 12px rgba(0, 128, 128, 0.3);
+        transform: translateY(-1px);
     }}
     .hero-panel {{
         display: flex;
@@ -410,9 +588,9 @@ st.markdown(f"""
         color: #6B3200;
     }}
     div[data-testid="stTabs"] [data-baseweb="tab-list"] {{
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
         width: 100%;
         background: linear-gradient(180deg, rgba(255, 252, 248, 0.98) 0%, rgba(246, 240, 233, 0.96) 100%);
         padding: 8px;
@@ -421,6 +599,14 @@ st.markdown(f"""
         position: relative;
         border-bottom: none !important;
         box-shadow: 0 10px 24px rgba(52, 72, 84, 0.08);
+    }}
+    
+    /* Responsive design for mobile */
+    @media (max-width: 768px) {{
+        div[data-testid="stTabs"] [data-baseweb="tab-list"] {{
+            flex-direction: column;
+            gap: 8px;
+        }}
     }}
     /* Hide Streamlit/BaseWeb's active tab underline indicator */
     div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
@@ -448,7 +634,7 @@ st.markdown(f"""
         transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
         border: 1px solid rgba(255, 255, 255, 0.9);
         border-bottom: none !important;
-        width: 100%;
+        flex: 1;
         justify-content: center;
         padding: 0.82rem 1rem;
         white-space: nowrap;
@@ -458,6 +644,13 @@ st.markdown(f"""
         outline: none !important;
         position: relative;
     }}
+    
+    @media (max-width: 768px) {{
+        div[data-testid="stTabs"] button[role="tab"] {{
+            flex: none;
+            width: 100%;
+        }}
+    }}
     /* Remove any browser/Streamlit focus ring or underline */
     div[data-testid="stTabs"] button[role="tab"]:focus,
     div[data-testid="stTabs"] button[role="tab"]:focus-visible {{
@@ -465,12 +658,12 @@ st.markdown(f"""
         box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.12) !important;
         border-bottom: none !important;
     }}
-    /* Hover: use SDPS_ACCENT (teal) instead of red/orange */
+    /* Hover: subtle blue-teal hover effect */
     div[data-testid="stTabs"] button[role="tab"]:hover {{
-        background: linear-gradient(180deg, rgba(230,126,0,0.12) 0%, rgba(230,126,0,0.04) 100%);
+        background: linear-gradient(180deg, rgba(15, 76, 129, 0.08) 0%, rgba(0, 128, 128, 0.06) 100%);
         color: {SDPS_PRIMARY};
-        border-color: rgba(230,126,0,0.18);
-        box-shadow: 0 6px 16px rgba(230,126,0,0.12) !important;
+        border-color: rgba(15, 76, 129, 0.25);
+        box-shadow: 0 4px 12px rgba(15, 76, 129, 0.15) !important;
         transform: translateY(-1px);
     }}
     /* Selected tab: stronger teal emphasis with no underline */
@@ -558,6 +751,7 @@ def load_model():
     return joblib.load(model_path)
 
 model = load_model()
+db = get_database()
 
 # ============================================================================
 # FEATURE DEFINITIONS (UCI DATASET)
@@ -624,9 +818,9 @@ def validate_inputs(age):
     """Validate student inputs"""
     warnings_list = []
     if age < 18:
-        warnings_list.append("⚠️ Student is under 18 (early enrollment)")
+        warnings_list.append("Student is under 18 (early enrollment)")
     if age > 35:
-        warnings_list.append("⚠️ Mature student (age > 35) - may indicate career change")
+        warnings_list.append("Mature student (age > 35)")
     return warnings_list
 
 def generate_recommendations(prob, age, marital, special_needs):
@@ -696,12 +890,38 @@ def compute_priority_score(prob, age, special_needs):
 moderate_threshold = 0.40
 high_threshold = 0.70
 
+# Admin Profile Section
+db = get_database()
+admin_profile = db.get_admin_profile(st.session_state.username)
+
 st.sidebar.markdown("---")
-st.sidebar.subheader("Single Student Input")
+
+# Load the profile image (image.png)
+profile_image_path = os.path.join(os.path.dirname(__file__), "..", "assets", "image.png")
+if os.path.exists(profile_image_path):
+    with open(profile_image_path, "rb") as img_file:
+        profile_img_base64 = base64.b64encode(img_file.read()).decode("utf-8")
+else:
+    profile_img_base64 = load_logo_base64()  # Fallback to logo
+
+# Professional Profile header with image.png
+st.sidebar.markdown(f"""
+    <div style="padding: 20px 16px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(15, 76, 129, 0.1); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+        <div style="text-align: center;">
+            <img src="data:image/png;base64,{profile_img_base64}" alt="Profile" style="width: 70px; height: 70px; border-radius: 50%; border: 3px solid #0F4C81; box-shadow: 0 4px 12px rgba(15, 76, 129, 0.2); object-fit: cover;" />
+        </div>
+        <div style="text-align: center; margin-top: 12px;">
+            <div style="font-size: 0.7em; color: #6B3200; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Administrator</div>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("Student Assessment")
 
 marital = st.sidebar.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
 application_mode = st.sidebar.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
-application_order = st.sidebar.number_input("Application Order", min_value=0, max_value=9, value=1, step=1)
+application_order = st.sidebar.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="Enter application order")
 course = st.sidebar.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
 attendance = st.sidebar.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select attendance", key="attendance")
 qualification = st.sidebar.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
@@ -718,15 +938,15 @@ if age_text.strip():
         if age_preview < 18:
             st.sidebar.error("Age must be 18 or above.")
         elif age_preview > 35:
-            st.sidebar.info("⚠️ Mature student (age > 35) - may indicate career change")
+            st.sidebar.info("Note: Mature student (age > 35)")
     except ValueError:
         st.sidebar.error("Age must be a whole number.")
 
-predict_clicked = st.sidebar.button("Run Assessment", width="stretch", type="primary")
+predict_clicked = st.sidebar.button("Run Assessment", use_container_width=True, type="primary")
 
-with st.sidebar.expander("Input Schema"):
+with st.sidebar.expander("Model Input Schema"):
     st.markdown("""
-    Required model input order:
+    **Required Features (in order):**
     1. Marital status
     2. Application mode
     3. Application order
@@ -741,32 +961,45 @@ with st.sidebar.expander("Input Schema"):
     12. International
     """)
 
+# Settings and Logout at the bottom of sidebar
 st.sidebar.markdown("---")
-st.sidebar.subheader("Admin Access")
-if not st.session_state.get("admin_logged_in", False):
-    username = st.sidebar.text_input("Username", key="login_user")
-    password = st.sidebar.text_input("Password", type="password", key="login_pass")
-    if st.sidebar.button("Login", type="secondary"):
-        import hashlib
-        pwd_hash = hashlib.sha256(password.encode()).hexdigest()
-        # Hash for 'admin123'
-        if username == "admin" and pwd_hash == "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9":
-            st.session_state.admin_logged_in = True
-            st.sidebar.success("Logged in successfully.")
-            st.rerun()
-        else:
-            st.sidebar.error("Invalid credentials.")
-else:
-    st.sidebar.success("Logged in as Admin")
-    if st.sidebar.button("Logout"):
-        st.session_state.admin_logged_in = False
-        st.rerun()
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
+
+if st.sidebar.button("Settings", use_container_width=True, key="settings_btn"):
+    st.session_state.show_settings = not st.session_state.get('show_settings', False)
+
+if st.sidebar.button("Logout", use_container_width=True, type="secondary"):
+    logout()
+
+# Settings Panel (shown conditionally)
+if st.session_state.get('show_settings', False):
+    with st.sidebar.expander("Change Password", expanded=True):
+        with st.form("change_password_form"):
+            old_pass = st.text_input("Current Password", type="password", key="old_pass")
+            new_pass = st.text_input("New Password", type="password", key="new_pass")
+            confirm_pass = st.text_input("Confirm Password", type="password", key="confirm_pass")
+            
+            if st.form_submit_button("Update Password", use_container_width=True):
+                if new_pass != confirm_pass:
+                    st.error("Passwords do not match")
+                elif len(new_pass) < 8:
+                    st.error("Password must be at least 8 characters")
+                elif not any(c.isupper() for c in new_pass) or not any(c.isdigit() for c in new_pass):
+                    st.error("Password must contain uppercase and numbers")
+                else:
+                    if db.change_password(st.session_state.username, old_pass, new_pass):
+                        st.success("Password updated successfully")
+                        st.session_state.show_settings = False
+                    else:
+                        st.error("Current password is incorrect")
 
 st.markdown("## System Statistics")
 
-total_assessments = len(st.session_state.prediction_history)
-high_risk_cases = sum(1 for item in st.session_state.prediction_history if item.get("risk_level") == "HIGH RISK")
-low_risk_cases = sum(1 for item in st.session_state.prediction_history if item.get("risk_level") == "LOW RISK")
+# Get stats from database
+stats = db.get_prediction_stats()
+total_assessments = stats['total']
+high_risk_cases = stats['high_risk']
+low_risk_cases = stats['low_risk']
 
 stat_col1, stat_col2, stat_col3 = st.columns(3)
 
@@ -780,7 +1013,7 @@ with stat_col3:
     st.metric("Low Risk Cases", low_risk_cases)
 
 st.caption(
-    f"History records loaded: {len(st.session_state.prediction_history)}"
+    f"History records loaded: {total_assessments}"
 )
 
 
@@ -872,18 +1105,27 @@ with tab1:
             priority_band = classify_priority(priority_score)
             owner = intervention_owner(priority_band)
 
-            st.session_state.prediction_history.append({
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "age": age_value,
-                "marital": marital,
-                "course": course,
-                "qualification": qualification,
-                "risk_prob": prob_dropout,
-                "risk_level": risk_label,
-                "priority_score": priority_score,
-                "priority_band": priority_band
-            })
-            save_prediction_history(st.session_state.prediction_history)
+            # Save prediction to database
+            prediction_id = db.save_prediction(
+                age=age_value,
+                marital_status=marital,
+                course=course,
+                application_mode=application_mode,
+                attendance=attendance,
+                qualification=qualification,
+                gender=gender,
+                displaced=displaced,
+                special_needs=special,
+                scholarship=scholarship,
+                international=international,
+                risk_probability=prob_dropout,
+                risk_level=risk_label,
+                priority_score=priority_score,
+                priority_band=priority_band
+            )
+            
+            # Refresh history from database
+            st.session_state.prediction_history = db.get_all_predictions()
 
             k1, k2, k3, k4 = st.columns(4)
             with k1:
@@ -927,148 +1169,143 @@ with tab1:
     st.divider()
     st.subheader("Recent Assessments")
     
-    if not st.session_state.get("admin_logged_in", False):
-        st.info("🔒 Please log in as an Admin via the sidebar to view prediction history.")
-    else:
-        if st.session_state.history_notice:
-            st.markdown(
-                f'''
-                <div class="notice-success" role="status" aria-live="polite">
-                    <div class="notice-success-icon">✓</div>
-                    <div>
-                        <p class="notice-success-title">{st.session_state.history_notice["title"]}</p>
-                        <p class="notice-success-text">{st.session_state.history_notice["message"]}</p>
-                    </div>
+    if st.session_state.history_notice:
+        st.markdown(
+            f'''
+            <div class="notice-success" role="status" aria-live="polite">
+                <div class="notice-success-icon">✓</div>
+                <div>
+                    <p class="notice-success-title">{st.session_state.history_notice["title"]}</p>
+                    <p class="notice-success-text">{st.session_state.history_notice["message"]}</p>
                 </div>
-                ''',
-                unsafe_allow_html=True,
-            )
-            st.session_state.history_notice = None
-        if st.session_state.prediction_history:
-            hist_df = build_history_dataframe(st.session_state.prediction_history)
-            history_view = hist_df.copy()
-            if "_history_index" in history_view.columns:
-                history_view = history_view.drop(columns=["_history_index"])
-            if "timestamp" in history_view.columns:
-                history_view["timestamp"] = history_view["timestamp"].fillna("")
+            </div>
+            ''',
+            unsafe_allow_html=True,
+        )
+        st.session_state.history_notice = None
+    
+    if st.session_state.prediction_history:
+        hist_df = build_history_dataframe(st.session_state.prediction_history)
+        history_view = hist_df.copy()
+        if "_history_index" in history_view.columns:
+            history_view = history_view.drop(columns=["_history_index"])
+        if "timestamp" in history_view.columns:
+            history_view["timestamp"] = history_view["timestamp"].fillna("")
 
-            st.dataframe(history_view.head(10), width="stretch")
+        st.dataframe(history_view.head(10), width="stretch")
 
-            button_col1, button_col2 = st.columns([1.5, 0.13])
-            with button_col2:
-                if not st.session_state.clear_timestamp_confirm:
-                    if st.button("Clear History", use_container_width=True):
-                        st.session_state.clear_timestamp_confirm = True
+        button_col1, button_col2 = st.columns([1.5, 0.13])
+        with button_col2:
+            if not st.session_state.clear_timestamp_confirm:
+                if st.button("Clear History", use_container_width=True):
+                    st.session_state.clear_timestamp_confirm = True
+                    st.rerun()
+            else:
+                st.caption("Are you sure you want to clear timestamp history?")
+                confirm_col1, confirm_col2 = st.columns(2)
+                with confirm_col1:
+                    if st.button("Yes"):
+                        db.clear_all_predictions()
+                        st.session_state.prediction_history = []
+                        st.session_state.clear_timestamp_confirm = False
+                        st.session_state.history_notice = {
+                            "title": "History cleared",
+                            "message": "All recent assessment records have been removed.",
+                        }
                         st.rerun()
-                else:
-                    st.caption("Are you sure you want to clear timestamp history?")
-                    confirm_col1, confirm_col2 = st.columns(2)
-                    with confirm_col1:
-                        if st.button("Yes"):
-                            st.session_state.prediction_history = []
-                            save_prediction_history([])
-                            st.session_state.clear_timestamp_confirm = False
-                            st.session_state.history_notice = {
-                                "title": "History cleared",
-                                "message": "All recent assessment records have been removed.",
-                            }
-                            st.rerun()
-                    with confirm_col2:
-                        if st.button("No"):
-                            st.session_state.clear_timestamp_confirm = False
-                            st.rerun()
-        else:
-            st.caption("No assessments yet.")
+                with confirm_col2:
+                    if st.button("No"):
+                        st.session_state.clear_timestamp_confirm = False
+                        st.rerun()
+    else:
+        st.caption("No assessments yet.")
 
 
 with tab2:
-    if not st.session_state.get("admin_logged_in", False):
-        st.warning("🔒 This section requires Admin access. Please log in via the sidebar.")
+    st.subheader("Cohort Triage and Operations")
+    uploaded = st.file_uploader(
+        "Upload cohort CSV",
+        type=["csv"],
+        help="First 12 columns must follow model input order."
+    )
+    
+    if uploaded:
+        try:
+            df_batch = pd.read_csv(uploaded)
+            if len(df_batch.columns) < 12:
+                st.error(f"Expected at least 12 columns, found {len(df_batch.columns)}")
+            else:
+                features = df_batch.iloc[:, :12].copy()
+                probs = model.predict_proba(features.values)[:, 1]
+    
+                result_df = df_batch.copy()
+                result_df["Dropout_Probability"] = probs
+                result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
+                result_df["Priority_Score"] = result_df.apply(
+                    lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[10]), int(r.iloc[7])),
+                    axis=1
+                )
+                result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
+                result_df["Assigned_Owner"] = result_df["Priority_Band"].apply(intervention_owner)
+    
+                st.session_state.batch_results = result_df
+    
+                total = len(result_df)
+                high_count = int((result_df["Dropout_Probability"] >= high_threshold).sum())
+                mod_count = int(((result_df["Dropout_Probability"] >= moderate_threshold) & (result_df["Dropout_Probability"] < high_threshold)).sum())
+                p1_count = int((result_df["Priority_Band"] == "P1 - Immediate").sum())
+    
+                k1, k2, k3, k4 = st.columns(4)
+                with k1:
+                    st.metric("Cohort Size", total)
+                with k2:
+                    st.metric("High Risk", f"{high_count} ({(high_count / total) * 100:.1f}%)")
+                with k3:
+                    st.metric("Moderate Risk", f"{mod_count} ({(mod_count / total) * 100:.1f}%)")
+                with k4:
+                    st.metric("Immediate Priority", p1_count)
+    
+                c1, c2 = st.columns(2)
+                with c1:
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.hist(result_df["Dropout_Probability"], bins=20, color=SDPS_PRIMARY, edgecolor=SDPS_BLACK)
+                    ax.axvline(moderate_threshold, color=SDPS_SECONDARY, linestyle="--", label="Moderate threshold")
+                    ax.axvline(high_threshold, color=SDPS_BLACK, linestyle="--", label="High threshold")
+                    ax.set_facecolor(SDPS_SOFT_GRAY)
+                    ax.set_title("Risk Probability Distribution")
+                    ax.set_xlabel("Dropout Probability")
+                    ax.set_ylabel("Students")
+                    ax.legend()
+                    st.pyplot(fig)
+                with c2:
+                    order = ["P1 - Immediate", "P2 - High", "P3 - Medium", "P4 - Routine"]
+                    priority_counts = result_df["Priority_Band"].value_counts().reindex(order, fill_value=0)
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.bar(priority_counts.index, priority_counts.values, color=[SDPS_PRIMARY, SDPS_SECONDARY, "#8d6e63", "#c7b299"])
+                    ax.set_facecolor(SDPS_SOFT_GRAY)
+                    ax.set_title("Operational Priority Queue")
+                    ax.set_ylabel("Students")
+                    ax.tick_params(axis="x", rotation=15)
+                    st.pyplot(fig)
+    
+                st.markdown("**Triage Queue (highest priority first)**")
+                triage = result_df.sort_values(by=["Priority_Score", "Dropout_Probability"], ascending=False)
+                st.dataframe(triage.head(100), width="stretch", height=380)
+    
+                csv_data = triage.to_csv(index=False)
+                triage_col1, triage_col2 = st.columns(2)
+                with triage_col1:
+                    st.download_button("Download Triage Plan", csv_data, "triage_plan.csv", "text/csv", use_container_width=True)
+                with triage_col2:
+                    if st.button("Clear Batch Results", use_container_width=True):
+                        st.session_state.batch_results = None
+                        st.success("Batch results cleared.")
+                        st.rerun()
+    
+        except Exception as e:
+            st.error(f"Batch processing error: {str(e)}")
     else:
-        st.subheader("Cohort Triage and Operations")
-        uploaded = st.file_uploader(
-            "Upload cohort CSV",
-            type=["csv"],
-            help="First 12 columns must follow model input order."
-        )
-    
-        if uploaded:
-            try:
-                df_batch = pd.read_csv(uploaded)
-                if len(df_batch.columns) < 12:
-                    st.error(f"Expected at least 12 columns, found {len(df_batch.columns)}")
-                else:
-                    features = df_batch.iloc[:, :12].copy()
-                    probs = model.predict_proba(features.values)[:, 1]
-    
-                    result_df = df_batch.copy()
-                    result_df["Dropout_Probability"] = probs
-                    result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
-                    result_df["Priority_Score"] = result_df.apply(
-                        lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[10]), int(r.iloc[7])),
-                        axis=1
-                    )
-                    result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
-                    result_df["Assigned_Owner"] = result_df["Priority_Band"].apply(intervention_owner)
-    
-                    st.session_state.batch_results = result_df
-    
-                    total = len(result_df)
-                    high_count = int((result_df["Dropout_Probability"] >= high_threshold).sum())
-                    mod_count = int(((result_df["Dropout_Probability"] >= moderate_threshold) & (result_df["Dropout_Probability"] < high_threshold)).sum())
-                    p1_count = int((result_df["Priority_Band"] == "P1 - Immediate").sum())
-    
-                    k1, k2, k3, k4 = st.columns(4)
-                    with k1:
-                        st.metric("Cohort Size", total)
-                    with k2:
-                        st.metric("High Risk", f"{high_count} ({(high_count / total) * 100:.1f}%)")
-                    with k3:
-                        st.metric("Moderate Risk", f"{mod_count} ({(mod_count / total) * 100:.1f}%)")
-                    with k4:
-                        st.metric("Immediate Priority", p1_count)
-    
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        fig, ax = plt.subplots(figsize=(8, 4))
-                        ax.hist(result_df["Dropout_Probability"], bins=20, color=SDPS_PRIMARY, edgecolor=SDPS_BLACK)
-                        ax.axvline(moderate_threshold, color=SDPS_SECONDARY, linestyle="--", label="Moderate threshold")
-                        ax.axvline(high_threshold, color=SDPS_BLACK, linestyle="--", label="High threshold")
-                        ax.set_facecolor(SDPS_SOFT_GRAY)
-                        ax.set_title("Risk Probability Distribution")
-                        ax.set_xlabel("Dropout Probability")
-                        ax.set_ylabel("Students")
-                        ax.legend()
-                        st.pyplot(fig)
-                    with c2:
-                        order = ["P1 - Immediate", "P2 - High", "P3 - Medium", "P4 - Routine"]
-                        priority_counts = result_df["Priority_Band"].value_counts().reindex(order, fill_value=0)
-                        fig, ax = plt.subplots(figsize=(8, 4))
-                        ax.bar(priority_counts.index, priority_counts.values, color=[SDPS_PRIMARY, SDPS_SECONDARY, "#8d6e63", "#c7b299"])
-                        ax.set_facecolor(SDPS_SOFT_GRAY)
-                        ax.set_title("Operational Priority Queue")
-                        ax.set_ylabel("Students")
-                        ax.tick_params(axis="x", rotation=15)
-                        st.pyplot(fig)
-    
-                    st.markdown("**Triage Queue (highest priority first)**")
-                    triage = result_df.sort_values(by=["Priority_Score", "Dropout_Probability"], ascending=False)
-                    st.dataframe(triage.head(100), width="stretch", height=380)
-    
-                    csv_data = triage.to_csv(index=False)
-                    triage_col1, triage_col2 = st.columns(2)
-                    with triage_col1:
-                        st.download_button("Download Triage Plan", csv_data, "triage_plan.csv", "text/csv", use_container_width=True)
-                    with triage_col2:
-                        if st.button("Clear Batch Results", use_container_width=True):
-                            st.session_state.batch_results = None
-                            st.success("Batch results cleared.")
-                            st.rerun()
-    
-            except Exception as e:
-                st.error(f"Batch processing error: {str(e)}")
-        else:
-            st.caption("Upload a cohort CSV to generate operational triage outputs.")
+        st.caption("Upload a cohort CSV to generate operational triage outputs.")
     
     
     
