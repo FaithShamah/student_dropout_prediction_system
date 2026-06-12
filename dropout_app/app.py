@@ -608,9 +608,101 @@ st.markdown(f"""
     
     /* Responsive design for mobile */
     @media (max-width: 768px) {{
+        .hero-panel {{
+            padding: 18px;
+            gap: 14px;
+            border-radius: 18px;
+        }}
+        .main-header {{
+            font-size: 2.25rem;
+            line-height: 1.08;
+        }}
+        .subtitle {{
+            font-size: 1rem;
+            margin-top: -4px;
+        }}
+        .hero-copy {{
+            font-size: 0.96rem;
+            line-height: 1.5;
+        }}
+        .hero-meta {{
+            min-width: 112px;
+            flex: 0 0 112px;
+        }}
+        .hero-meta img {{
+            width: 96px !important;
+            height: 96px !important;
+        }}
+        div[data-testid="stColumn"] {{
+            min-width: 0 !important;
+        }}
+        div[data-testid="stMetric"] {{
+            min-height: 96px;
+            padding: 10px 12px;
+        }}
+        div[data-testid="stMetric"] label {{
+            font-size: 0.82rem;
+        }}
+        div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
+            font-size: 1rem;
+        }}
         div[data-testid="stTabs"] [data-baseweb="tab-list"] {{
-            flex-direction: column;
+            flex-direction: row !important;
+            overflow-x: auto !important;
             gap: 8px;
+            padding: 6px;
+        }}
+        div[data-testid="stTabs"] button[role="tab"] {{
+            flex: 1 0 auto !important;
+            width: 150px;
+            padding: 0.75rem 0.9rem;
+            font-size: 0.9rem;
+        }}
+        .notice-success {{
+            align-items: flex-start;
+            padding: 12px;
+        }}
+        .notice-success-icon {{
+            width: 30px;
+            height: 30px;
+            flex: 0 0 30px;
+        }}
+    }}
+    @media (max-width: 480px) {{
+        .block-container {{
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }}
+        .hero-panel {{
+            padding: 16px;
+        }}
+        .main-header {{
+            font-size: 1.85rem;
+        }}
+        .subtitle {{
+            font-size: 0.92rem;
+        }}
+        .hero-copy {{
+            font-size: 0.9rem;
+        }}
+        .hero-meta {{
+            min-width: 92px;
+            flex: 0 0 92px;
+        }}
+        .hero-meta img {{
+            width: 82px !important;
+            height: 82px !important;
+        }}
+        div[data-testid="stMetric"] {{
+            min-height: 88px;
+            padding: 9px 10px;
+        }}
+        div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
+            font-size: 0.92rem;
+        }}
+        div[data-testid="stTabs"] button[role="tab"] {{
+            width: 138px;
+            font-size: 0.84rem;
         }}
     }}
     /* Hide Streamlit/BaseWeb's active tab underline indicator */
@@ -652,8 +744,8 @@ st.markdown(f"""
     
     @media (max-width: 768px) {{
         div[data-testid="stTabs"] button[role="tab"] {{
-            flex: none;
-            width: 100%;
+            flex: 1 0 auto !important;
+            width: 150px;
         }}
     }}
     /* Remove any browser/Streamlit focus ring or underline */
@@ -924,30 +1016,21 @@ st.sidebar.markdown(f"""
 st.sidebar.markdown("---")
 st.sidebar.subheader("Student Assessment")
 
-marital = st.sidebar.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
-application_mode = st.sidebar.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
-application_order = st.sidebar.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="Enter application order")
-course = st.sidebar.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
-attendance = st.sidebar.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select attendance", key="attendance")
-qualification = st.sidebar.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
-displaced = st.sidebar.selectbox("Displaced", ["No", "Yes"], index=None, placeholder="Select displaced status", key="displaced")
-special = st.sidebar.selectbox("Special Needs", list(SPECIAL_NEEDS.keys()), index=None, placeholder="Select special needs", key="special")
-gender = st.sidebar.selectbox("Gender", ["Female", "Male"], index=None, placeholder="Select gender", key="gender")
-scholarship = st.sidebar.selectbox("Scholarship Holder", ["No", "Yes"], index=None, placeholder="Select scholarship status", key="scholarship")
-international = st.sidebar.selectbox("International", ["No", "Yes"], index=None, placeholder="Select international status", key="international")
-age_text = st.sidebar.text_input("Age at Enrollment", placeholder="Enter age (18 or above)", key="age")
+with st.sidebar.form("student_assessment_form", clear_on_submit=False):
+    marital = st.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
+    application_mode = st.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
+    application_order = st.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="Enter application order")
+    course = st.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
+    attendance = st.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select attendance", key="attendance")
+    qualification = st.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
+    displaced = st.selectbox("Displaced", ["No", "Yes"], index=None, placeholder="Select displaced status", key="displaced")
+    special = st.selectbox("Special Needs", list(SPECIAL_NEEDS.keys()), index=None, placeholder="Select special needs", key="special")
+    gender = st.selectbox("Gender", ["Female", "Male"], index=None, placeholder="Select gender", key="gender")
+    scholarship = st.selectbox("Scholarship Holder", ["No", "Yes"], index=None, placeholder="Select scholarship status", key="scholarship")
+    international = st.selectbox("International", ["No", "Yes"], index=None, placeholder="Select international status", key="international")
+    age_text = st.text_input("Age at Enrollment", placeholder="Enter age (18 or above)", key="age")
 
-if age_text.strip():
-    try:
-        age_preview = int(age_text)
-        if age_preview < 18:
-            st.sidebar.error("Age must be 18 or above.")
-        elif age_preview > 35:
-            st.sidebar.info("Note: Mature student (age > 35)")
-    except ValueError:
-        st.sidebar.error("Age must be a whole number.")
-
-predict_clicked = st.sidebar.button("Run Assessment", use_container_width=True, type="primary")
+    predict_clicked = st.form_submit_button("Run Assessment", use_container_width=True, type="primary")
 
 with st.sidebar.expander("Model Input Schema"):
     st.markdown("""
