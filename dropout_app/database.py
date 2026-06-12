@@ -9,15 +9,22 @@ from datetime import datetime
 from typing import Optional, List, Dict
 import bcrypt
 
-
 class Database:
     """SQLite database manager for SDPS"""
     
     def __init__(self, db_path: str = None):
         """Initialize database connection"""
         if db_path is None:
-            db_path = os.path.join(os.path.dirname(__file__), "sdps.db")
+            # Use environment variable or default to current directory
+            db_path = os.getenv("PERSISTENT_DB_PATH", "sdps.db")
+        
+        # Ensure the directory exists
+        db_dir = os.path.dirname(db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+        
         self.db_path = db_path
+        print(f"Database path: {self.db_path}")  # Debug: show the actual path
         self.init_database()
     
     def get_connection(self):
@@ -26,49 +33,54 @@ class Database:
     
     def init_database(self):
         """Initialize database tables"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # Create admins table with email and profile support
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS admins (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                email_verified INTEGER DEFAULT 0,
-                verification_code TEXT,
-                profile_image TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Create predictions table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS predictions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                age INTEGER,
-                marital_status TEXT,
-                course TEXT,
-                application_mode TEXT,
-                attendance TEXT,
-                qualification TEXT,
-                gender TEXT,
-                displaced TEXT,
-                special_needs TEXT,
-                scholarship TEXT,
-                international TEXT,
-                risk_probability REAL NOT NULL,
-                risk_level TEXT NOT NULL,
-                priority_score REAL,
-                priority_band TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        conn.commit()
-        conn.close()
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Create admins table with email and profile support
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS admins (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    email_verified INTEGER DEFAULT 0,
+                    verification_code TEXT,
+                    profile_image TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Create predictions table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS predictions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    age INTEGER,
+                    marital_status TEXT,
+                    course TEXT,
+                    application_mode TEXT,
+                    attendance TEXT,
+                    qualification TEXT,
+                    gender TEXT,
+                    displaced TEXT,
+                    special_needs TEXT,
+                    scholarship TEXT,
+                    international TEXT,
+                    risk_probability REAL NOT NULL,
+                    risk_level TEXT NOT NULL,
+                    priority_score REAL,
+                    priority_band TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            print(f"Database initialization error: {e}")
+            raise
     
     # ============================================================================
     # ADMIN AUTHENTICATION METHODS
