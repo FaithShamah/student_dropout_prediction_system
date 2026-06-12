@@ -235,7 +235,29 @@ class Database:
             conn.close()
             return count > 0
         except sqlite3.OperationalError:
-            # Table doesn't exist yet
+            return False
+
+    def update_admin_credentials(self, username: str, password: str, email: str) -> bool:
+        """Update the first admin user credentials"""
+        try:
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                """
+                UPDATE admins
+                SET username = ?, email = ?, password_hash = ?
+                WHERE id = (SELECT id FROM admins ORDER BY id LIMIT 1)
+                """,
+                (username, email, password_hash)
+            )
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception:
             return False
     
     # ============================================================================

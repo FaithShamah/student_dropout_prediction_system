@@ -62,17 +62,17 @@ def get_database():
 
 # Update init_admin_user to use the new path
 def init_admin_user():
-    db = init_database()  
-    
+    db = init_database()
+
+    admin_username = os.getenv("ADMIN_USERNAME", "admin")
+    admin_password = os.getenv("ADMIN_PASSWORD", "SDPSAdmin@2024!")
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@gmail.com")
+
     if not db.admin_exists():
-        # Check environment variables first
-        admin_username = os.getenv("ADMIN_USERNAME", "admin")
-        admin_password = os.getenv("ADMIN_PASSWORD", "SDPSAdmin@2024!")
-        admin_email = os.getenv("ADMIN_EMAIL", "admin@gmail.com")
-        
-        # Create default admin
         db.create_admin(admin_username, admin_password, admin_email)
-    
+    elif os.getenv("ADMIN_PASSWORD"):
+        db.update_admin_credentials(admin_username, admin_password, admin_email)
+
     return db
 
 # ============================================================================
