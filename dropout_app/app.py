@@ -55,6 +55,11 @@ def init_database():
     db_path = os.getenv("PERSISTENT_DB_PATH", "sdps.db")
     return Database(db_path)
 
+@st.cache_resource
+def get_database():
+    """Return the cached database instance"""
+    return init_database()
+
 # Update init_admin_user to use the new path
 def init_admin_user():
     db = init_database()  
