@@ -234,6 +234,7 @@ class Database:
         priority_band: str,
         course: str = None,
         application_mode: str = None,
+        application_order: int = None,
         attendance: str = None,
         qualification: str = None,
         gender: str = None,
@@ -255,6 +256,7 @@ class Database:
                 'marital_status': marital_status,
                 'course': course,
                 'application_mode': application_mode,
+                'application_order': application_order,
                 'attendance': attendance,
                 'qualification': qualification,
                 'gender': gender,
@@ -293,6 +295,7 @@ class Database:
                     'marital': row['marital_status'],
                     'course': row['course'],
                     'application_mode': row['application_mode'],
+                    'application_order': row['application_order'],  # <--- ADDED THIS LINE
                     'attendance': row['attendance'],
                     'qualification': row['qualification'],
                     'gender': row['gender'],
@@ -312,7 +315,7 @@ class Database:
         except Exception as e:
             self._handle_error(e)
             return []
-    
+        
     def get_prediction_stats(self) -> Dict:
         """
         Get statistics about predictions

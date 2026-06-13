@@ -54,6 +54,10 @@ def migrate_csv_to_database():
             marital_status = str(row.get('marital', '')) if pd.notna(row.get('marital')) else None
             course = str(row.get('course', '')) if pd.notna(row.get('course')) else None
             qualification = str(row.get('qualification', '')) if pd.notna(row.get('qualification')) else None
+            
+            # --- ADD EXTRACTION HERE ---
+            application_order = int(row.get('application_order', 0)) if pd.notna(row.get('application_order')) else None
+            
             risk_prob = float(row.get('risk_prob', 0.0)) if pd.notna(row.get('risk_prob')) else 0.0
             risk_level = str(row.get('risk_level', 'UNKNOWN')) if pd.notna(row.get('risk_level')) else 'UNKNOWN'
             priority_score = float(row.get('priority_score', 0.0)) if pd.notna(row.get('priority_score')) else 0.0
@@ -65,6 +69,7 @@ def migrate_csv_to_database():
                 marital_status=marital_status,
                 course=course,
                 qualification=qualification,
+                application_order=application_order,  # <--- ADD TO SAVE CALL
                 risk_probability=risk_prob,
                 risk_level=risk_level,
                 priority_score=priority_score,

@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from database import Database
 
 warnings.filterwarnings("ignore")
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
 SDPS_PRIMARY = "#0F4C81"   # Deep Indigo/Blue
 SDPS_SECONDARY = "#008080" # Teal
@@ -209,6 +209,7 @@ def login_page():
                     if db.verify_admin(username, password):
                         st.session_state.logged_in = True
                         st.session_state.username = username
+                        st.query_params["authenticated"] = username
                         st.success("Authentication successful")
                         st.rerun()
                     else:
@@ -220,18 +221,16 @@ def logout():
     """Handle logout"""
     st.session_state.logged_in = False
     st.session_state.username = None
+    if "authenticated" in st.query_params:
+        del st.query_params["authenticated"]
     st.rerun()
 
-# ============================================================================
-# STUDENT DROPOUT PREDICTION SYSTEM (SDPS)
-# Final Year Project: ML-Based Predictive Analytics for Early Dropout Identification
-# ============================================================================
-
-# ============================================================================
-# MAIN APPLICATION
-# ============================================================================
-# Initialize database and admin user
-init_admin_user()
+# Fix 1: Use query parameters for persistent login across browser refreshes
+auth_token = st.query_params.get("authenticated", None)
+if auth_token:
+    st.session_state.logged_in = True
+    if "username" not in st.session_state:
+        st.session_state.username = auth_token
 
 # Check authentication status
 if "logged_in" not in st.session_state:
@@ -830,6 +829,8 @@ if "clear_timestamp_confirm" not in st.session_state:
     st.session_state.clear_timestamp_confirm = False
 if "history_notice" not in st.session_state:
     st.session_state.history_notice = None
+if "last_prediction" not in st.session_state:
+    st.session_state.last_prediction = None
 
 @st.cache_resource
 def load_model():
@@ -872,7 +873,6 @@ QUALIFICATION = {
 APPLICATION_MODE = {
     "Direct Entry (UACE)": 1,
     "Diploma Entry": 7,
-    "International Student": 15,
     "Mature Age Entry": 39,
     "Transfer Student": 42,
     "Change of Course": 43,
@@ -1008,7 +1008,7 @@ st.sidebar.markdown(f"""
 st.sidebar.markdown("---")
 st.sidebar.subheader("Student Assessment")
 
-with st.sidebar.form("student_assessment_form", clear_on_submit=False):
+with st.sidebar.form("student_assessment_form", clear_on_submit=True):
     marital = st.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
     application_mode = st.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
     application_order = st.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="Enter application order")
@@ -1075,13 +1075,18 @@ if st.session_state.get('show_settings', False):
 
 st.markdown("## System Statistics")
 
-# Get stats from database
-stats = db.get_prediction_stats()
+if st.session_state.get("refresh_stats"):
+    stats = db.get_prediction_stats()
+    st.session_state["refresh_stats"] = False
+else:
+    stats = db.get_prediction_stats()
+
 total_assessments = stats['total']
 high_risk_cases = stats['high_risk']
+moderate_risk_cases = stats['moderate_risk']
 low_risk_cases = stats['low_risk']
 
-stat_col1, stat_col2, stat_col3 = st.columns(3)
+stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
 
 with stat_col1:
     st.metric("Total Assessments", total_assessments)
@@ -1090,6 +1095,9 @@ with stat_col2:
     st.metric("High Risk Cases", high_risk_cases)
 
 with stat_col3:
+    st.metric("Moderate Risk Cases", moderate_risk_cases)
+
+with stat_col4:
     st.metric("Low Risk Cases", low_risk_cases)
 
 st.caption(
@@ -1116,6 +1124,8 @@ with tab1:
             missing_fields.append("Marital Status")
         if application_mode is None:
             missing_fields.append("Application Mode")
+        if application_order is None:
+            missing_fields.append("Application Order")
         if course is None:
             missing_fields.append("Course")
         if attendance is None:
@@ -1185,12 +1195,13 @@ with tab1:
             priority_band = classify_priority(priority_score)
             owner = intervention_owner(priority_band)
 
-            # Save prediction to database
+              # Save prediction to database
             prediction_id = db.save_prediction(
                 age=age_value,
                 marital_status=marital,
                 course=course,
                 application_mode=application_mode,
+                application_order=application_order,  # <--- ADDED THIS LINE
                 attendance=attendance,
                 qualification=qualification,
                 gender=gender,
@@ -1203,48 +1214,48 @@ with tab1:
                 priority_score=priority_score,
                 priority_band=priority_band
             )
-            
-            # Refresh history from database
+
             st.session_state.prediction_history = db.get_all_predictions()
-
-            k1, k2, k3, k4 = st.columns(4)
-            with k1:
-                st.metric("Dropout Risk", f"{prob_dropout:.1%}")
-            with k2:
-                st.metric("Completion Probability", f"{prob_graduate:.1%}")
-            with k3:
-                st.metric("Risk Category", risk_label)
-            with k4:
-                st.metric("Priority Score", f"{priority_score:.1f}/100")
-
-            if risk_type == "critical":
-                st.markdown(f"<div class='risk-high'><strong>{risk_label}</strong><br>Immediate response required. Priority: {priority_band}</div>", unsafe_allow_html=True)
-            elif risk_type == "warning":
-                st.markdown(f"<div class='risk-moderate'><strong>{risk_label}</strong><br>Proactive intervention recommended. Priority: {priority_band}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='risk-low'><strong>{risk_label}</strong><br>Routine support pathway. Priority: {priority_band}</div>", unsafe_allow_html=True)
-
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("**Student Context**")
-                st.write(f"- Age: {age_value}")
-                st.write(f"- Marital status: {marital}")
-                st.write(f"- Course: {course}")
-                st.write(f"- Special needs: {special}")
-            with c2:
-                st.markdown("**Intervention Routing**")
-                st.write(f"- Priority band: {priority_band}")
-                st.write(f"- Assigned owner: {owner}")
-                st.write("- Suggested first action window: 24-72 hours" if priority_band in ["P1 - Immediate", "P2 - High"] else "- Suggested first action window: within 7 days")
-
-            st.markdown("**Recommended Actions**")
-            for idx, rec in enumerate(generate_recommendations(prob_dropout, age_value, MARITAL_STATUS[marital], SPECIAL_NEEDS[special]), 1):
-                st.write(f"{idx}. {rec}")
+            st.session_state["refresh_stats"] = True
+            st.rerun()
 
         except Exception as e:
             st.error(f"Prediction error: {str(e)}")
-    else:
-        st.info("Use the left panel to enter student details, then click Run Assessment.")
+    if st.session_state.get("last_prediction"):
+        data = st.session_state["last_prediction"]
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            st.metric("Dropout Risk", f"{data['prob_dropout']:.1%}")
+        with k2:
+            st.metric("Completion Probability", f"{data['prob_graduate']:.1%}")
+        with k3:
+            st.metric("Risk Category", data["risk_label"])
+        with k4:
+            st.metric("Priority Score", f"{data['priority_score']:.1f}/100")
+
+        if data["risk_type"] == "critical":
+            st.markdown(f"<div class='risk-high'><strong>{data['risk_label']}</strong><br>Immediate response required. Priority: {data['priority_band']}</div>", unsafe_allow_html=True)
+        elif data["risk_type"] == "warning":
+            st.markdown(f"<div class='risk-moderate'><strong>{data['risk_label']}</strong><br>Proactive intervention recommended. Priority: {data['priority_band']}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='risk-low'><strong>{data['risk_label']}</strong><br>Routine support pathway. Priority: {data['priority_band']}</div>", unsafe_allow_html=True)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Student Context**")
+            st.write(f"- Age: {data['age_value']}")
+            st.write(f"- Marital status: {data['marital']}")
+            st.write(f"- Course: {data['course']}")
+            st.write(f"- Special needs: {data['special']}")
+        with c2:
+            st.markdown("**Intervention Routing**")
+            st.write(f"- Priority band: {data['priority_band']}")
+            st.write(f"- Assigned owner: {data['owner']}")
+            st.write("- Suggested first action window: 24-72 hours" if data["priority_band"] in ["P1 - Immediate", "P2 - High"] else "- Suggested first action window: within 7 days")
+
+        st.markdown("**Recommended Actions**")
+        for idx, rec in enumerate(generate_recommendations(data["prob_dropout"], data["age_value"], MARITAL_STATUS[data["marital"]], SPECIAL_NEEDS[data["special"]]), 1):
+            st.write(f"{idx}. {rec}")
 
     st.divider()
     st.subheader("Recent Assessments")
