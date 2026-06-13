@@ -1,5 +1,5 @@
 """
-Migration script to import prediction_history.csv into SQLite database
+Migration script to import prediction_history.csv into Supabase database
 Run this once to migrate your old CSV data to the new database system
 """
 
@@ -10,7 +10,7 @@ from datetime import datetime
 
 
 def migrate_csv_to_database():
-    """Import CSV predictions into SQLite database"""
+    """Import CSV predictions into Supabase database"""
     
     csv_file = os.path.join(os.path.dirname(__file__), "prediction_history.csv")
     
@@ -20,8 +20,12 @@ def migrate_csv_to_database():
         return
     
     # Initialize database
-    db = Database()
-    print("✅ Database initialized")
+    try:
+        db = Database()
+        print("✅ Supabase connected")
+    except Exception as e:
+        print(f"❌ Failed to connect to Supabase: {e}")
+        return
     
     # Read CSV file
     try:
@@ -45,7 +49,6 @@ def migrate_csv_to_database():
     
     for idx, row in df.iterrows():
         try:
-            # Extract data from CSV row
             timestamp = row.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             age = int(row.get('age', 0)) if pd.notna(row.get('age')) else None
             marital_status = str(row.get('marital', '')) if pd.notna(row.get('marital')) else None
@@ -83,11 +86,9 @@ def migrate_csv_to_database():
     print(f"   📈 Total in database: {len(db.get_all_predictions())} records")
     print("="*60)
     
-    # Ask if user wants to backup/delete old CSV
     response = input("\n🗑️  Delete old CSV file? (yes/no): ")
     if response.lower() in ['yes', 'y']:
         try:
-            # Create backup first
             backup_file = csv_file + ".backup"
             os.rename(csv_file, backup_file)
             print(f"✅ CSV file backed up to: {backup_file}")
@@ -98,7 +99,7 @@ def migrate_csv_to_database():
 if __name__ == "__main__":
     print("="*60)
     print("🔄 SDPS Data Migration Tool")
-    print("   CSV → SQLite Database")
+    print("   CSV → Supabase Database")
     print("="*60)
     print()
     

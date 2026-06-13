@@ -1,116 +1,75 @@
 """
 Database module for SDPS (Student Dropout Prediction System)
-Handles SQLite operations for admin authentication and prediction history
+Handles Supabase operations for admin authentication and prediction history
 """
 
-import sqlite3
 import os
 from datetime import datetime
 from typing import Optional, List, Dict
 import bcrypt
+from supabase import create_client, Client
+
 
 class Database:
-    """SQLite database manager for SDPS"""
+    """Supabase database manager for SDPS"""
     
-    def __init__(self, db_path: str = None):
-        """Initialize database connection"""
-        if db_path is None:
-            # Use environment variable or default to current directory
-            db_path = os.getenv("PERSISTENT_DB_PATH", "sdps.db")
+    def __init__(self, supabase_url: str = None, supabase_key: str = None):
+        """Initialize Supabase client"""
+        self.supabase_url = supabase_url or os.getenv("SUPABASE_URL")
+        self.supabase_key = supabase_key or os.getenv("SUPABASE_ANON_KEY")
         
-        # Ensure the directory exists
-        db_dir = os.path.dirname(db_path)
-        if db_dir and not os.path.exists(db_dir):
-            os.makedirs(db_dir, exist_ok=True)
+        if not self.supabase_url or not self.supabase_key:
+            raise ValueError(
+                "Supabase URL and Key must be provided. "
+                "Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables."
+            )
         
-        self.db_path = db_path
-        print(f"Database path: {self.db_path}")  # Debug: show the actual path
-        self.init_database()
+        self.client: Client = create_client(self.supabase_url, self.supabase_key)
+        print(f"Supabase connected: {self.supabase_url}")
     
-    def get_connection(self):
-        """Get database connection"""
-        return sqlite3.connect(self.db_path)
-    
-    def init_database(self):
-        """Initialize database tables"""
-        try:
-            conn = self.get_connection()
-            cursor = conn.cursor()
-            
-            # Create admins table with email and profile support
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS admins (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    email_verified INTEGER DEFAULT 0,
-                    verification_code TEXT,
-                    profile_image TEXT,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            # Create predictions table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS predictions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    age INTEGER,
-                    marital_status TEXT,
-                    course TEXT,
-                    application_mode TEXT,
-                    attendance TEXT,
-                    qualification TEXT,
-                    gender TEXT,
-                    displaced TEXT,
-                    special_needs TEXT,
-                    scholarship TEXT,
-                    international TEXT,
-                    risk_probability REAL NOT NULL,
-                    risk_level TEXT NOT NULL,
-                    priority_score REAL,
-                    priority_band TEXT,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            conn.commit()
-            conn.close()
-            
-        except Exception as e:
-            print(f"Database initialization error: {e}")
-            raise
+    def _handle_error(self, error) -> None:
+        """Handle Supabase errors"""
+        if hasattr(error, 'message'):
+            print(f"Supabase error: {error.message}")
+        else:
+            print(f"Supabase error: {error}")
     
     # ============================================================================
     # ADMIN AUTHENTICATION METHODS
     # ============================================================================
     
-    def create_admin(self, username: str, password: str, email: str = None, profile_image: str = None) -> bool:
+    def create_admin(
+        self, 
+        username: str, 
+        password: str, 
+        email: str = None, 
+        profile_image: str = None
+    ) -> bool:
         """
         Create a new admin user with hashed password
         Returns True if successful, False if username already exists
         """
         try:
             # Hash the password
-            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             
             # Default email format if not provided
             default_email = f"{username}@gmail.com" if not email else email
             
-            conn = self.get_connection()
-            cursor = conn.cursor()
+            response = self.client.table('admins').insert({
+                'username': username,
+                'email': default_email,
+                'password_hash': password_hash,
+                'profile_image': profile_image
+            }).execute()
             
-            cursor.execute(
-                "INSERT INTO admins (username, email, password_hash, profile_image) VALUES (?, ?, ?, ?)",
-                (username, default_email, password_hash, profile_image)
-            )
+            return len(response.data) > 0
             
-            conn.commit()
-            conn.close()
-            return True
-        except sqlite3.IntegrityError:
-            # Username already exists
+        except Exception as e:
+            self._handle_error(e)
+            # Check for unique constraint violation
+            if 'duplicate' in str(e).lower() or 'unique' in str(e).lower():
+                return False
             return False
     
     def verify_admin(self, username: str, password: str, email: str = None) -> bool:
@@ -118,146 +77,147 @@ class Database:
         Verify admin credentials with optional email verification
         Returns True if credentials are valid, False otherwise
         """
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        if email:
-            cursor.execute(
-                "SELECT password_hash, email_verified FROM admins WHERE username = ? AND email = ?",
-                (username, email)
-            )
-        else:
-            cursor.execute(
-                "SELECT password_hash, email_verified FROM admins WHERE username = ?",
-                (username,)
-            )
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result is None:
+        try:
+            if email:
+                response = self.client.table('admins').select(
+                    'password_hash, email_verified'
+                ).eq('username', username).eq('email', email).execute()
+            else:
+                response = self.client.table('admins').select(
+                    'password_hash, email_verified'
+                ).eq('username', username).execute()
+            
+            if not response.data or len(response.data) == 0:
+                return False
+            
+            stored_hash = response.data[0]['password_hash']
+            
+            # Handle string password hash
+            if isinstance(stored_hash, str):
+                stored_hash = stored_hash.encode('utf-8')
+            
+            # Verify password
+            return bcrypt.checkpw(password.encode('utf-8'), stored_hash)
+            
+        except Exception as e:
+            self._handle_error(e)
             return False
-        
-        stored_hash, email_verified = result
-        
-        # Handle both string and bytes for password_hash
-        if isinstance(stored_hash, str):
-            stored_hash = stored_hash.encode('utf-8')
-        
-        # Verify password
-        password_valid = bcrypt.checkpw(password.encode('utf-8'), stored_hash)
-        
-        # For now, we'll allow login even if email not verified
-        # You can change this to: return password_valid and email_verified == 1
-        return password_valid
     
     def get_admin_profile(self, username: str) -> Optional[Dict]:
         """Get admin profile information"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "SELECT username, email, email_verified, profile_image FROM admins WHERE username = ?",
-            (username,)
-        )
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result:
-            return {
-                'username': result[0],
-                'email': result[1],
-                'email_verified': result[2] == 1,
-                'profile_image': result[3]
-            }
-        return None
+        try:
+            response = self.client.table('admins').select(
+                'username, email, email_verified, profile_image'
+            ).eq('username', username).execute()
+            
+            if response.data and len(response.data) > 0:
+                data = response.data[0]
+                return {
+                    'username': data['username'],
+                    'email': data['email'],
+                    'email_verified': data['email_verified'] == 1 or data['email_verified'] is True,
+                    'profile_image': data['profile_image']
+                }
+            return None
+            
+        except Exception as e:
+            self._handle_error(e)
+            return None
     
-    def update_admin_profile(self, username: str, email: str = None, profile_image: str = None) -> bool:
+    def update_admin_profile(
+        self, 
+        username: str, 
+        email: str = None, 
+        profile_image: str = None
+    ) -> bool:
         """Update admin profile"""
         try:
-            conn = self.get_connection()
-            cursor = conn.cursor()
+            update_data = {}
+            if email:
+                update_data['email'] = email
+            if profile_image:
+                update_data['profile_image'] = profile_image
             
-            if email and profile_image:
-                cursor.execute(
-                    "UPDATE admins SET email = ?, profile_image = ? WHERE username = ?",
-                    (email, profile_image, username)
-                )
-            elif email:
-                cursor.execute(
-                    "UPDATE admins SET email = ? WHERE username = ?",
-                    (email, username)
-                )
-            elif profile_image:
-                cursor.execute(
-                    "UPDATE admins SET profile_image = ? WHERE username = ?",
-                    (profile_image, username)
-                )
+            if not update_data:
+                return True
             
-            conn.commit()
-            conn.close()
-            return True
-        except Exception:
+            response = self.client.table('admins').update(
+                update_data
+            ).eq('username', username).execute()
+            
+            return len(response.data) > 0
+            
+        except Exception as e:
+            self._handle_error(e)
             return False
     
-    def change_password(self, username: str, old_password: str, new_password: str) -> bool:
+    def change_password(
+        self, 
+        username: str, 
+        old_password: str, 
+        new_password: str
+    ) -> bool:
         """Change admin password"""
         if not self.verify_admin(username, old_password):
             return False
         
         try:
-            new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+            new_hash = bcrypt.hashpw(
+                new_password.encode('utf-8'), 
+                bcrypt.gensalt()
+            ).decode('utf-8')
             
-            conn = self.get_connection()
-            cursor = conn.cursor()
+            response = self.client.table('admins').update({
+                'password_hash': new_hash
+            }).eq('username', username).execute()
             
-            cursor.execute(
-                "UPDATE admins SET password_hash = ? WHERE username = ?",
-                (new_hash, username)
-            )
+            return len(response.data) > 0
             
-            conn.commit()
-            conn.close()
-            return True
-        except Exception:
+        except Exception as e:
+            self._handle_error(e)
             return False
     
     def admin_exists(self) -> bool:
         """Check if any admin user exists in the database"""
         try:
-            conn = self.get_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT COUNT(*) FROM admins")
-            count = cursor.fetchone()[0]
-            
-            conn.close()
-            return count > 0
-        except sqlite3.OperationalError:
+            response = self.client.table('admins').select('id').limit(1).execute()
+            return len(response.data) > 0
+        except Exception as e:
+            self._handle_error(e)
             return False
-
-    def update_admin_credentials(self, username: str, password: str, email: str) -> bool:
+    
+    def update_admin_credentials(
+        self, 
+        username: str, 
+        password: str, 
+        email: str
+    ) -> bool:
         """Update the first admin user credentials"""
         try:
-            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            password_hash = bcrypt.hashpw(
+                password.encode('utf-8'), 
+                bcrypt.gensalt()
+            ).decode('utf-8')
             
-            conn = self.get_connection()
-            cursor = conn.cursor()
+            # Get the first admin's ID
+            response = self.client.table('admins').select('id').limit(1).execute()
             
-            cursor.execute(
-                """
-                UPDATE admins
-                SET username = ?, email = ?, password_hash = ?
-                WHERE id = (SELECT id FROM admins ORDER BY id LIMIT 1)
-                """,
-                (username, email, password_hash)
-            )
+            if not response.data:
+                return False
             
-            conn.commit()
-            conn.close()
+            first_admin_id = response.data[0]['id']
+            
+            # Update the credentials
+            self.client.table('admins').update({
+                'username': username,
+                'email': email,
+                'password_hash': password_hash
+            }).eq('id', first_admin_id).execute()
+            
             return True
-        except Exception:
+            
+        except Exception as e:
+            self._handle_error(e)
             return False
     
     # ============================================================================
@@ -288,125 +248,128 @@ class Database:
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO predictions (
-                timestamp, age, marital_status, course, application_mode,
-                attendance, qualification, gender, displaced, special_needs,
-                scholarship, international, risk_probability, risk_level,
-                priority_score, priority_band
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            timestamp, age, marital_status, course, application_mode,
-            attendance, qualification, gender, displaced, special_needs,
-            scholarship, international, risk_probability, risk_level,
-            priority_score, priority_band
-        ))
-        
-        prediction_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
-        return prediction_id
+        try:
+            response = self.client.table('predictions').insert({
+                'timestamp': timestamp,
+                'age': age,
+                'marital_status': marital_status,
+                'course': course,
+                'application_mode': application_mode,
+                'attendance': attendance,
+                'qualification': qualification,
+                'gender': gender,
+                'displaced': displaced,
+                'special_needs': special_needs,
+                'scholarship': scholarship,
+                'international': international,
+                'risk_probability': risk_probability,
+                'risk_level': risk_level,
+                'priority_score': priority_score,
+                'priority_band': priority_band
+            }).execute()
+            
+            if response.data and len(response.data) > 0:
+                return response.data[0]['id']
+            return 0
+            
+        except Exception as e:
+            self._handle_error(e)
+            return 0
     
     def get_all_predictions(self) -> List[Dict]:
         """
         Retrieve all predictions from the database
         Returns list of dictionaries with prediction data
         """
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT 
-                id, timestamp, age, marital_status, course, application_mode,
-                attendance, qualification, gender, displaced, special_needs,
-                scholarship, international, risk_probability, risk_level,
-                priority_score, priority_band
-            FROM predictions
-            ORDER BY id DESC
-        """)
-        
-        columns = [
-            'id', 'timestamp', 'age', 'marital', 'course', 'application_mode',
-            'attendance', 'qualification', 'gender', 'displaced', 'special_needs',
-            'scholarship', 'international', 'risk_prob', 'risk_level',
-            'priority_score', 'priority_band'
-        ]
-        
-        rows = cursor.fetchall()
-        conn.close()
-        
-        predictions = []
-        for row in rows:
-            prediction = dict(zip(columns, row))
-            predictions.append(prediction)
-        
-        return predictions
+        try:
+            response = self.client.table('predictions').select('*').order('id', desc=True).execute()
+            
+            predictions = []
+            for row in response.data:
+                prediction = {
+                    'id': row['id'],
+                    'timestamp': row['timestamp'],
+                    'age': row['age'],
+                    'marital': row['marital_status'],
+                    'course': row['course'],
+                    'application_mode': row['application_mode'],
+                    'attendance': row['attendance'],
+                    'qualification': row['qualification'],
+                    'gender': row['gender'],
+                    'displaced': row['displaced'],
+                    'special_needs': row['special_needs'],
+                    'scholarship': row['scholarship'],
+                    'international': row['international'],
+                    'risk_prob': row['risk_probability'],
+                    'risk_level': row['risk_level'],
+                    'priority_score': row['priority_score'],
+                    'priority_band': row['priority_band']
+                }
+                predictions.append(prediction)
+            
+            return predictions
+            
+        except Exception as e:
+            self._handle_error(e)
+            return []
     
     def get_prediction_stats(self) -> Dict:
         """
         Get statistics about predictions
         Returns dictionary with counts
         """
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # Total predictions
-        cursor.execute("SELECT COUNT(*) FROM predictions")
-        total = cursor.fetchone()[0]
-        
-        # High risk count
-        cursor.execute("SELECT COUNT(*) FROM predictions WHERE risk_level = 'HIGH RISK'")
-        high_risk = cursor.fetchone()[0]
-        
-        # Moderate risk count
-        cursor.execute("SELECT COUNT(*) FROM predictions WHERE risk_level = 'MODERATE RISK'")
-        moderate_risk = cursor.fetchone()[0]
-        
-        # Low risk count
-        cursor.execute("SELECT COUNT(*) FROM predictions WHERE risk_level = 'LOW RISK'")
-        low_risk = cursor.fetchone()[0]
-        
-        conn.close()
-        
-        return {
-            'total': total,
-            'high_risk': high_risk,
-            'moderate_risk': moderate_risk,
-            'low_risk': low_risk
-        }
+        try:
+            # Get all predictions and compute stats
+            response = self.client.table('predictions').select('risk_level').execute()
+            
+            total = len(response.data)
+            high_risk = sum(1 for r in response.data if r['risk_level'] == 'HIGH RISK')
+            moderate_risk = sum(1 for r in response.data if r['risk_level'] == 'MODERATE RISK')
+            low_risk = sum(1 for r in response.data if r['risk_level'] == 'LOW RISK')
+            
+            return {
+                'total': total,
+                'high_risk': high_risk,
+                'moderate_risk': moderate_risk,
+                'low_risk': low_risk
+            }
+            
+        except Exception as e:
+            self._handle_error(e)
+            return {
+                'total': 0,
+                'high_risk': 0,
+                'moderate_risk': 0,
+                'low_risk': 0
+            }
     
     def clear_all_predictions(self) -> int:
         """
         Clear all predictions from the database
         Returns number of rows deleted
         """
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("DELETE FROM predictions")
-        deleted_count = cursor.rowcount
-        
-        conn.commit()
-        conn.close()
-        
-        return deleted_count
+        try:
+            # First get the count
+            response = self.client.table('predictions').select('id', count='exact').execute()
+            count = response.count if hasattr(response, 'count') else len(response.data)
+            
+            # Delete all
+            self.client.table('predictions').delete().neq('id', 0).execute()
+            
+            return count
+            
+        except Exception as e:
+            self._handle_error(e)
+            return 0
     
     def delete_prediction(self, prediction_id: int) -> bool:
         """
         Delete a specific prediction by ID
         Returns True if deleted, False if not found
         """
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("DELETE FROM predictions WHERE id = ?", (prediction_id,))
-        deleted = cursor.rowcount > 0
-        
-        conn.commit()
-        conn.close()
-        
-        return deleted
+        try:
+            response = self.client.table('predictions').delete().eq('id', prediction_id).execute()
+            return len(response.data) > 0
+        except Exception as e:
+            self._handle_error(e)
+            return False

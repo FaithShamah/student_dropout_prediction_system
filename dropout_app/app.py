@@ -51,21 +51,19 @@ SDPS_LOGO_HTML = (
 # ============================================================================
 @st.cache_resource
 def init_database():
-    """Initialize database with Render-compatible path"""
-    db_path = os.getenv("PERSISTENT_DB_PATH", "sdps.db")
-    return Database(db_path)
+    """Initialize Supabase database connection"""
+    return Database()
 
 @st.cache_resource
 def get_database():
     """Return the cached database instance"""
     return init_database()
 
-# Update init_admin_user to use the new path
 def init_admin_user():
     db = init_database()
 
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "SDPSAdmin@2024!")
+    admin_password = os.getenv("ADMIN_PASSWORD", "Admin@2026#")
     admin_email = os.getenv("ADMIN_EMAIL", "admin@gmail.com")
 
     if not db.admin_exists():
@@ -111,6 +109,7 @@ def build_history_dataframe(history):
 # ============================================================================
 # AUTHENTICATION FUNCTIONS
 # ============================================================================
+
 def login_page():
     """Display professional login page"""
     st.markdown("""
@@ -200,29 +199,22 @@ def login_page():
             """, unsafe_allow_html=True)
             
             username = st.text_input("Username", placeholder="Enter your username", key="login_username")
-            email = st.text_input("Email", placeholder="Enter your email", key="login_email")
             password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
             
             submit_button = st.form_submit_button("Sign In", type="primary", use_container_width=True)
             
             if submit_button:
-                if username and email and password:
-                    # Validate email format
-                    import re
-                    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-                    if not re.match(email_pattern, email):
-                        st.error("Please enter a valid email address (e.g., user@gmail.com)")
+                if username and password:
+                    db = get_database()
+                    if db.verify_admin(username, password):
+                        st.session_state.logged_in = True
+                        st.session_state.username = username
+                        st.success("Authentication successful")
+                        st.rerun()
                     else:
-                        db = get_database()
-                        if db.verify_admin(username, password, email=email):
-                            st.session_state.logged_in = True
-                            st.session_state.username = username
-                            st.success("Authentication successful")
-                            st.rerun()
-                        else:
-                            st.error("Invalid credentials. Please check username, email and password.")
+                        st.error("Invalid credentials. Please check your username and password.")
                 else:
-                    st.warning("Please fill in all fields")
+                    st.warning("Please fill in all fields")    
 
 def logout():
     """Handle logout"""
