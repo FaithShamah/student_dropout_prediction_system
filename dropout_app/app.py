@@ -10,6 +10,7 @@ import seaborn as sns
 import warnings
 from dotenv import load_dotenv
 from database import Database
+from io import BytesIO
 
 warnings.filterwarnings("ignore")
 load_dotenv()
@@ -1371,22 +1372,112 @@ with tab1:
 with tab2:
     st.markdown('<div class="tab-content-wrapper">', unsafe_allow_html=True)
     st.subheader("Cohort Triage and Operations")
+    
+    # UPDATED: Added "xlsx" to the accepted file types
     uploaded = st.file_uploader(
-        "Upload cohort CSV",
-        type=["csv"],
-        help="First 10 columns must follow model input order."
+        "Upload cohort CSV or Excel",
+        type=["csv", "xlsx"],
+        help="Upload a CSV or Excel file with columns like 'age', 'gender', 'marital', 'course', etc."
     )
     
     if uploaded:
         try:
-            df_batch = pd.read_csv(uploaded)
-            if len(df_batch.columns) < 10:
-                st.error(f"Expected at least 10 columns, found {len(df_batch.columns)}")
+            # UPDATED: Logic to handle both CSV and Excel files
+            if uploaded.name.endswith('.xlsx'):
+                df_batch = pd.read_excel(uploaded)
             else:
-                # Slice the first 10 columns for the model features
-                features = df_batch.iloc[:, :10].copy()
+                df_batch = pd.read_csv(uploaded)
+            
+            # ---------------------------------------------------------
+            # AUTO-RENAME COLUMNS
+            # ---------------------------------------------------------
+            rename_map = {
+                'age': 'Age at enrollment',
+                'marital': 'Marital status',
+                'application_mode': 'Application mode',
+                'application_order': 'Application order',
+                'course': 'Course',
+                'attendance': 'Daytime/evening attendance',
+                'qualification': 'Previous qualification',
+                'gender': 'Gender',
+                'scholarship': 'Scholarship holder',
+                'international': 'International'
+            }
+            
+            # Apply renaming (handling case and whitespace)
+            df_batch.columns = [rename_map.get(str(col).strip().lower(), col) for col in df_batch.columns]
+            
+            # 1. Clean column names again just in case
+            df_batch.columns = df_batch.columns.str.strip()
+
+            # 2. Define the EXACT columns the model needs
+            required_columns = [
+                "Marital status",
+                "Application mode",
+                "Application order",
+                "Course",
+                "Daytime/evening attendance",
+                "Previous qualification",
+                "Gender",
+                "Scholarship holder",
+                "Age at enrollment",
+                "International"
+            ]
+
+            # 3. Check if the CSV (now renamed) has all the required columns
+            missing_cols = [col for col in required_columns if col not in df_batch.columns]
+            if missing_cols:
+                st.error(f"❌ Your file is missing these columns: {', '.join(missing_cols)}")
+                st.info("ℹ️ Ensure your file has headers: age, gender, marital, course, etc.")
+            else:
+                # 4. Select only the columns we need
+                features = df_batch[required_columns].copy()
+
+                # ---------------------------------------------------------
+                # MAP TEXT TO NUMBERS
+                # ---------------------------------------------------------
                 
-                # Run predictions
+                # 1. Marital Status
+                features["Marital status"] = features["Marital status"].map(MARITAL_STATUS)
+
+                # 2. Application Mode
+                features["Application mode"] = features["Application mode"].map(APPLICATION_MODE)
+
+                # 3. Application Order
+                features["Application order"] = pd.to_numeric(features["Application order"], errors='coerce')
+
+                # 4. Course
+                features["Course"] = features["Course"].map(COURSE)
+
+                # 5. Attendance
+                attendance_map = {"Daytime": 1, "Evening": 0}
+                features["Daytime/evening attendance"] = features["Daytime/evening attendance"].map(attendance_map)
+
+                # 6. Qualification
+                features["Previous qualification"] = features["Previous qualification"].map(QUALIFICATION)
+
+                # 7. Gender
+                gender_map = {"Male": 1, "Female": 0}
+                features["Gender"] = features["Gender"].map(gender_map)
+
+                # 8. Scholarship
+                scholarship_map = {"Yes": 1, "No": 0}
+                features["Scholarship holder"] = features["Scholarship holder"].map(scholarship_map)
+
+                # 9. Age
+                features["Age at enrollment"] = pd.to_numeric(features["Age at enrollment"], errors='coerce')
+
+                # 10. International
+                international_map = {"Yes": 1, "No": 0}
+                features["International"] = features["International"].map(international_map)
+
+                # Convert everything to float
+                features = features.astype(float)
+                
+                # ---------------------------------------------------------
+                # RUN PREDICTIONS
+                # ---------------------------------------------------------
+                
                 probs = model.predict_proba(features.values)[:, 1]
     
                 # Add results to the dataframe
@@ -1395,9 +1486,8 @@ with tab2:
                 result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
                 
                 # Calculate Priority Score
-                # Note: Age is at index 8 in the new 10-feature list
                 result_df["Priority_Score"] = result_df.apply(
-                    lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[8])),
+                    lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r["Age at enrollment"])),
                     axis=1
                 )
                 result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
@@ -1409,7 +1499,7 @@ with tab2:
                 total = len(result_df)
                 high_count = int((result_df["Dropout_Probability"] >= high_threshold).sum())
                 mod_count = int(((result_df["Dropout_Probability"] >= moderate_threshold) & (result_df["Dropout_Probability"] < high_threshold)).sum())
-                p1_count = int((result_df["Priority_Band"] == "P1 - Immediate").sum())
+                low_count = int((result_df["Dropout_Probability"] < moderate_threshold).sum())
     
                 k1, k2, k3, k4 = st.columns(4)
                 with k1:
@@ -1419,7 +1509,7 @@ with tab2:
                 with k3:
                     st.metric("Moderate Risk", f"{mod_count} ({(mod_count / total) * 100:.1f}%)")
                 with k4:
-                    st.metric("Immediate Priority", p1_count)
+                    st.metric("Low Risk", f"{low_count} ({(low_count / total) * 100:.1f}%)")
     
                 # --- Display Charts ---
                 c1, c2 = st.columns(2)
@@ -1454,17 +1544,74 @@ with tab2:
                     height=400
                 )
 
-                # --- Download Button ---
+                                # --- Save to Database Option ---
+                st.markdown("---")
+                save_to_db = st.checkbox("💾 Save cohort results to database history", value=False)
+
+                if save_to_db:
+                    with st.spinner("Saving predictions to database..."):
+                        saved_count = 0
+                        for index, row in result_df.iterrows():
+                            # Save each row using the existing database function
+                            # We use 'result_df' because it still holds the original text values (e.g., "Male", "Married")
+                            db.save_prediction(
+                                age=int(row['Age at enrollment']),
+                                marital_status=row['Marital status'],
+                                course=row['Course'],
+                                application_mode=row['Application mode'],
+                                application_order=int(row['Application order']),
+                                attendance=row['Daytime/evening attendance'], # This is currently text "Daytime" or "Evening" in result_df
+                                qualification=row['Previous qualification'],
+                                gender=row['Gender'],
+                                scholarship=row['Scholarship holder'],
+                                international=row['International'],
+                                risk_probability=row['Dropout_Probability'],
+                                risk_level=row['Risk_Level'],
+                                priority_score=row['Priority_Score'],
+                                priority_band=row['Priority_Band']
+                            )
+                            saved_count += 1
+                        
+                        st.success(f"Successfully saved {saved_count} records to the database.")
+                        # Refresh the stats on the main dashboard
+                        st.session_state["refresh_stats"] = True
+
+                # --- Download Buttons ---
+                
+                # 1. Prepare CSV Data
                 csv = result_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="Download Results as CSV",
-                    data=csv,
-                    file_name=f'cohort_triage_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
-                    mime='text/csv',
-                )
+                
+                # 2. Prepare Excel Data
+                buffer = BytesIO()
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    result_df.to_excel(writer, index=False, sheet_name='Cohort Results')
+                excel_data = buffer.getvalue()
+
+                # 3. Display Buttons Side-by-Side
+                dl_col1, dl_col2 = st.columns(2)
+
+                with dl_col1:
+                    st.download_button(
+                        label="📄 Download as CSV",
+                        data=csv,
+                        file_name=f'cohort_triage_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                        mime='text/csv',
+                        use_container_width=True
+                    )
+
+                with dl_col2:
+                    st.download_button(
+                        label="📊 Download as Excel",
+                        data=excel_data,
+                        file_name=f'cohort_triage_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        use_container_width=True
+                    )
 
         except Exception as e:
-            st.error(f"Error processing cohort file: {str(e)}")
+            st.error(f"Error processing file: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
     
     st.markdown('</div>', unsafe_allow_html=True)
 
