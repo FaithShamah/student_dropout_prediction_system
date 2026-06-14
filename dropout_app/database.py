@@ -27,12 +27,16 @@ class Database:
         self.client: Client = create_client(self.supabase_url, self.supabase_key)
         print(f"Supabase connected: {self.supabase_url}")
     
-    def _handle_error(self, error) -> None:
-        """Handle Supabase errors"""
+    # Return (success, error_message)
+    def _handle_error(self, error) -> str:
+        """Handle Supabase errors and return message"""
+        msg = ""
         if hasattr(error, 'message'):
-            print(f"Supabase error: {error.message}")
+            msg = str(error.message)
         else:
-            print(f"Supabase error: {error}")
+            msg = str(error)
+        print(f"Supabase error: {msg}")
+        return msg
     
     # ============================================================================
     # ADMIN AUTHENTICATION METHODS
@@ -238,14 +242,12 @@ class Database:
         attendance: str = None,
         qualification: str = None,
         gender: str = None,
-        displaced: str = None,
-        special_needs: str = None,
         scholarship: str = None,
         international: str = None
-    ) -> int:
+    ) -> tuple:
         """
         Save a prediction to the database
-        Returns the ID of the inserted record
+        Returns (success: bool, error_message: str | None)
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
@@ -260,8 +262,6 @@ class Database:
                 'attendance': attendance,
                 'qualification': qualification,
                 'gender': gender,
-                'displaced': displaced,
-                'special_needs': special_needs,
                 'scholarship': scholarship,
                 'international': international,
                 'risk_probability': risk_probability,
@@ -271,12 +271,12 @@ class Database:
             }).execute()
             
             if response.data and len(response.data) > 0:
-                return response.data[0]['id']
-            return 0
+                return True, None
+            return False, "Insert returned no data"
             
         except Exception as e:
-            self._handle_error(e)
-            return 0
+            err = self._handle_error(e)
+            return False, err
     
     def get_all_predictions(self) -> List[Dict]:
         """
@@ -295,7 +295,7 @@ class Database:
                     'marital': row['marital_status'],
                     'course': row['course'],
                     'application_mode': row['application_mode'],
-                    'application_order': row['application_order'],  # <--- ADDED THIS LINE
+                    'application_order': row.get('application_order'),
                     'attendance': row['attendance'],
                     'qualification': row['qualification'],
                     'gender': row['gender'],
@@ -313,7 +313,8 @@ class Database:
             return predictions
             
         except Exception as e:
-            self._handle_error(e)
+            err = self._handle_error(e)
+            print(f"Failed to load predictions: {err}")
             return []
         
     def get_prediction_stats(self) -> Dict:
@@ -322,7 +323,6 @@ class Database:
         Returns dictionary with counts
         """
         try:
-            # Get all predictions and compute stats
             response = self.client.table('predictions').select('risk_level').execute()
             
             total = len(response.data)
@@ -338,7 +338,8 @@ class Database:
             }
             
         except Exception as e:
-            self._handle_error(e)
+            err = self._handle_error(e)
+            print(f"Failed to load stats: {err}")
             return {
                 'total': 0,
                 'high_risk': 0,

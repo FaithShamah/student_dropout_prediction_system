@@ -798,6 +798,65 @@ st.markdown(f"""
         border-color: #4f2400;
     }}
     
+    /* Tab content container - centered and constrained */
+    div[data-testid="stTabs"] [data-baseweb="tab-panel"] {{
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 10px;
+    }}
+    .tab-content-wrapper {{
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        box-sizing: border-box;
+    }}
+    .tab-content-wrapper .stSubheader,
+    .tab-content-wrapper .stMarkdown,
+    .tab-content-wrapper .stMetric,
+    .tab-content-wrapper .stDataFrame {{
+        text-align: center;
+    }}
+    .tab-content-wrapper .stForm {{
+        text-align: left;
+    }}
+    /* Ensure text wraps properly on mobile */
+    .tab-content-wrapper, .stDataFrame, .stDataFrame * {{
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }}
+    /* Mobile text containment */
+    @media (max-width: 768px) {{
+        div[data-testid="stTabs"] [data-baseweb="tab-panel"] {{
+            padding: 0 8px;
+        }}
+        .stDataFrame, .stDataFrame * {{
+            font-size: 0.85rem !important;
+        }}
+        .stMetric {{
+            min-height: 90px !important;
+        }}
+        .stMetric label {{
+            font-size: 0.8rem !important;
+        }}
+        .stMetric div[aria-describedby] {{
+            font-size: 0.95rem !important;
+        }}
+    }}
+    @media (max-width: 480px) {{
+        div[data-testid="stTabs"] [data-baseweb="tab-panel"] {{
+            padding: 0 6px;
+        }}
+        .stMarkdown p, .stCaption {{
+            font-size: 0.9rem !important;
+            line-height: 1.45;
+        }}
+        .stDataFrame {{
+            font-size: 0.8rem !important;
+        }}
+    }}
+    
     <!-- Dark-mode CSS overrides -->
     
     </style>
@@ -855,11 +914,6 @@ MARITAL_STATUS = {
     "Legally Separated": 6
 }
 
-SPECIAL_NEEDS = {
-    "No": 0,
-    "Yes": 1
-}
-
 QUALIFICATION = {
     "UACE Certificate": 1,
     "Diploma": 42,
@@ -912,7 +966,7 @@ def validate_inputs(age):
         warnings_list.append("Mature student (age > 35)")
     return warnings_list
 
-def generate_recommendations(prob, age, marital, special_needs):
+def generate_recommendations(prob, age, marital):
     """Generate personalized intervention recommendations"""
     recs = []
     
@@ -941,8 +995,6 @@ def generate_recommendations(prob, age, marital, special_needs):
         recs.append("Consider flexible scheduling options for balance")
     if marital in [2, 4, 5, 6]:
         recs.append("Assess work-life-study balance challenges")
-    if special_needs == 1:
-        recs.append("Verify all accessibility accommodations are active")
     
     return recs
 
@@ -969,9 +1021,8 @@ def intervention_owner(priority):
     return "Student Support Desk"
 
 
-def compute_priority_score(prob, age, special_needs):
+def compute_priority_score(prob, age):
     score = prob * 100
-    score += 10 if special_needs == 1 else 0
     score += 5 if (age < 18 or age >= 30) else 0
     return float(min(100, round(score, 2)))
 
@@ -1006,52 +1057,14 @@ st.sidebar.markdown(f"""
 """, unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Student Assessment")
-
-with st.sidebar.form("student_assessment_form", clear_on_submit=True):
-    marital = st.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
-    application_mode = st.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
-    application_order = st.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="Enter application order")
-    course = st.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
-    attendance = st.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select attendance", key="attendance")
-    qualification = st.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
-    displaced = st.selectbox("Displaced", ["No", "Yes"], index=None, placeholder="Select displaced status", key="displaced")
-    special = st.selectbox("Special Needs", list(SPECIAL_NEEDS.keys()), index=None, placeholder="Select special needs", key="special")
-    gender = st.selectbox("Gender", ["Female", "Male"], index=None, placeholder="Select gender", key="gender")
-    scholarship = st.selectbox("Scholarship Holder", ["No", "Yes"], index=None, placeholder="Select scholarship status", key="scholarship")
-    international = st.selectbox("International", ["No", "Yes"], index=None, placeholder="Select international status", key="international")
-    age_text = st.text_input("Age at Enrollment", placeholder="Enter age (18 or above)", key="age")
-
-    predict_clicked = st.form_submit_button("Run Assessment", use_container_width=True, type="primary")
-
-with st.sidebar.expander("Model Input Schema"):
-    st.markdown("""
-    **Required Features (in order):**
-    1. Marital status
-    2. Application mode
-    3. Application order
-    4. Course
-    5. Attendance
-    6. Previous qualification
-    7. Displaced
-    8. Special needs
-    9. Gender
-    10. Scholarship holder
-    11. Age
-    12. International
-    """)
 
 # Settings and Logout at the bottom of sidebar
-st.sidebar.markdown("---")
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
 if st.sidebar.button("Settings", use_container_width=True, key="settings_btn"):
     st.session_state.show_settings = not st.session_state.get('show_settings', False)
 
-if st.sidebar.button("Logout", use_container_width=True, type="secondary"):
-    logout()
-
-# Settings Panel (shown conditionally)
+# Settings Panel
 if st.session_state.get('show_settings', False):
     with st.sidebar.expander("Change Password", expanded=True):
         with st.form("change_password_form"):
@@ -1069,9 +1082,51 @@ if st.session_state.get('show_settings', False):
                 else:
                     if db.change_password(st.session_state.username, old_pass, new_pass):
                         st.success("Password updated successfully")
-                        st.session_state.show_settings = False
                     else:
                         st.error("Current password is incorrect")
+
+        st.sidebar.markdown("---")
+
+        st.sidebar.caption("Danger Zone")
+        if not st.session_state.get("delete_history_confirm_sb"):
+            if st.sidebar.button("Delete Prediction History", use_container_width=True, key="delete_history_btn_sb", type="secondary"):
+                st.session_state.delete_history_confirm_sb = True
+                st.rerun()
+        else:
+            st.sidebar.caption("Are you sure you want to delete all prediction history? This cannot be undone.")
+            del_col1, del_col2 = st.sidebar.columns(2)
+            with del_col1:
+                if st.sidebar.button("Yes, Delete", use_container_width=True, key="confirm_delete_yes_sb"):
+                    db.clear_all_predictions()
+                    st.session_state.prediction_history = []
+                    st.session_state.delete_history_confirm_sb = False
+                    st.session_state.history_notice = {
+                        "title": "History deleted",
+                        "message": "All prediction records have been permanently removed.",
+                    }
+                    st.rerun()
+            with del_col2:
+                if st.sidebar.button("Cancel", use_container_width=True, key="confirm_delete_no_sb"):
+                    st.session_state.delete_history_confirm_sb = False
+                    st.rerun()
+
+if st.sidebar.button("Logout", use_container_width=True, type="secondary"):
+    logout()
+
+with st.sidebar.expander("Model Input Schema", expanded=False):
+    st.markdown("""
+    **Required Features (in order):**
+    1. Marital status
+    2. Application mode
+    3. Application order
+    4. Course
+    5. Attendance
+    6. Previous qualification
+    7. Gender
+    8. Scholarship holder
+    9. Age
+    10. International
+    """)
 
 st.markdown("## System Statistics")
 
@@ -1116,7 +1171,24 @@ def map_risk(prob):
 tab1, tab2 = st.tabs(["Individual Assessment", "Cohort Triage (Admin)"])
 
 with tab1:
+    st.markdown('<div class="tab-content-wrapper">', unsafe_allow_html=True)
     st.subheader("Individual Student Assessment")
+
+    st.markdown("**Input student details to make predictions**")
+    with st.form("student_assessment_form", clear_on_submit=True):
+        marital = st.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
+        application_mode = st.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
+        application_order = st.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="Enter application order")
+        course = st.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
+        attendance = st.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select attendance", key="attendance")
+        qualification = st.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
+        gender = st.selectbox("Gender", ["Female", "Male"], index=None, placeholder="Select gender", key="gender")
+        scholarship = st.selectbox("Scholarship Holder", ["No", "Yes"], index=None, placeholder="Select scholarship status", key="scholarship")
+        international = st.selectbox("International", ["No", "Yes"], index=None, placeholder="Select international status", key="international")
+        age_text = st.text_input("Age at Enrollment", placeholder="Enter age (18 or above)", key="age")
+
+        predict_clicked = st.form_submit_button("Run Assessment", use_container_width=True, type="primary")
+
     if predict_clicked:
         missing_fields = []
 
@@ -1132,10 +1204,6 @@ with tab1:
             missing_fields.append("Attendance")
         if qualification is None:
             missing_fields.append("Previous Qualification")
-        if displaced is None:
-            missing_fields.append("Displaced")
-        if special is None:
-            missing_fields.append("Special Needs")
         if gender is None:
             missing_fields.append("Gender")
         if scholarship is None:
@@ -1166,7 +1234,6 @@ with tab1:
         application_mode_code = APPLICATION_MODE[application_mode]
         course_code = COURSE[course]
         attendance_code = 1 if attendance == "Daytime" else 0
-        displaced_code = 1 if displaced == "Yes" else 0
         gender_code = 1 if gender == "Male" else 0
         scholarship_code = 1 if scholarship == "Yes" else 0
         international_code = 1 if international == "Yes" else 0
@@ -1178,8 +1245,6 @@ with tab1:
             "Course": [course_code],
             "Daytime/evening attendance\t": [attendance_code],
             "Previous qualification": [QUALIFICATION[qualification]],
-            "Displaced": [displaced_code],
-            "Educational special needs": [SPECIAL_NEEDS[special]],
             "Gender": [gender_code],
             "Scholarship holder": [scholarship_code],
             "Age at enrollment": [age_value],
@@ -1191,36 +1256,52 @@ with tab1:
             prob_graduate = 1 - prob_dropout
             risk_label, risk_type = map_risk(prob_dropout)
 
-            priority_score = compute_priority_score(prob_dropout, age_value, SPECIAL_NEEDS[special])
+            priority_score = compute_priority_score(prob_dropout, age_value)
             priority_band = classify_priority(priority_score)
             owner = intervention_owner(priority_band)
 
-              # Save prediction to database
-            prediction_id = db.save_prediction(
+            st.session_state.last_prediction = {
+                "prob_dropout": prob_dropout,
+                "prob_graduate": prob_graduate,
+                "risk_label": risk_label,
+                "risk_type": risk_type,
+                "priority_score": priority_score,
+                "priority_band": priority_band,
+                "owner": owner,
+                "age_value": age_value,
+                "marital": marital,
+                "course": course,
+            }
+            result = db.save_prediction(
                 age=age_value,
                 marital_status=marital,
                 course=course,
                 application_mode=application_mode,
-                application_order=application_order,  # <--- ADDED THIS LINE
+                application_order=application_order,
                 attendance=attendance,
                 qualification=qualification,
                 gender=gender,
-                displaced=displaced,
-                special_needs=special,
                 scholarship=scholarship,
                 international=international,
                 risk_probability=prob_dropout,
                 risk_level=risk_label,
                 priority_score=priority_score,
-                priority_band=priority_band
+                priority_band=priority_band,
             )
-
-            st.session_state.prediction_history = db.get_all_predictions()
+            if isinstance(result, tuple):
+                saved, save_err = result
+                if not saved:
+                    st.warning(f"Prediction saved to session, but database save failed: {save_err}")
+            else:
+                if result == 0:
+                    st.warning("Prediction saved to session, but database returned no ID.")
+            st.session_state.prediction_history = load_prediction_history()
             st.session_state["refresh_stats"] = True
             st.rerun()
 
         except Exception as e:
             st.error(f"Prediction error: {str(e)}")
+
     if st.session_state.get("last_prediction"):
         data = st.session_state["last_prediction"]
         k1, k2, k3, k4 = st.columns(4)
@@ -1246,7 +1327,6 @@ with tab1:
             st.write(f"- Age: {data['age_value']}")
             st.write(f"- Marital status: {data['marital']}")
             st.write(f"- Course: {data['course']}")
-            st.write(f"- Special needs: {data['special']}")
         with c2:
             st.markdown("**Intervention Routing**")
             st.write(f"- Priority band: {data['priority_band']}")
@@ -1254,7 +1334,7 @@ with tab1:
             st.write("- Suggested first action window: 24-72 hours" if data["priority_band"] in ["P1 - Immediate", "P2 - High"] else "- Suggested first action window: within 7 days")
 
         st.markdown("**Recommended Actions**")
-        for idx, rec in enumerate(generate_recommendations(data["prob_dropout"], data["age_value"], MARITAL_STATUS[data["marital"]], SPECIAL_NEEDS[data["special"]]), 1):
+        for idx, rec in enumerate(generate_recommendations(data["prob_dropout"], data["age_value"], MARITAL_STATUS[data["marital"]]), 1):
             st.write(f"{idx}. {rec}")
 
     st.divider()
@@ -1284,56 +1364,33 @@ with tab1:
             history_view["timestamp"] = history_view["timestamp"].fillna("")
 
         st.dataframe(history_view.head(10), width="stretch")
-
-        button_col1, button_col2 = st.columns([1.5, 0.13])
-        with button_col2:
-            if not st.session_state.clear_timestamp_confirm:
-                if st.button("Clear History", use_container_width=True):
-                    st.session_state.clear_timestamp_confirm = True
-                    st.rerun()
-            else:
-                st.caption("Are you sure you want to clear timestamp history?")
-                confirm_col1, confirm_col2 = st.columns(2)
-                with confirm_col1:
-                    if st.button("Yes"):
-                        db.clear_all_predictions()
-                        st.session_state.prediction_history = []
-                        st.session_state.clear_timestamp_confirm = False
-                        st.session_state.history_notice = {
-                            "title": "History cleared",
-                            "message": "All recent assessment records have been removed.",
-                        }
-                        st.rerun()
-                with confirm_col2:
-                    if st.button("No"):
-                        st.session_state.clear_timestamp_confirm = False
-                        st.rerun()
     else:
         st.caption("No assessments yet.")
-
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
+    st.markdown('<div class="tab-content-wrapper">', unsafe_allow_html=True)
     st.subheader("Cohort Triage and Operations")
     uploaded = st.file_uploader(
         "Upload cohort CSV",
         type=["csv"],
-        help="First 12 columns must follow model input order."
+        help="First 10 columns must follow model input order."
     )
     
     if uploaded:
         try:
             df_batch = pd.read_csv(uploaded)
-            if len(df_batch.columns) < 12:
-                st.error(f"Expected at least 12 columns, found {len(df_batch.columns)}")
+            if len(df_batch.columns) < 10:
+                st.error(f"Expected at least 10 columns, found {len(df_batch.columns)}")
             else:
-                features = df_batch.iloc[:, :12].copy()
+                features = df_batch.iloc[:, :10].copy()
                 probs = model.predict_proba(features.values)[:, 1]
     
                 result_df = df_batch.copy()
                 result_df["Dropout_Probability"] = probs
                 result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
                 result_df["Priority_Score"] = result_df.apply(
-                    lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[10]), int(r.iloc[7])),
+                    lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[8])),
                     axis=1
                 )
                 result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
@@ -1392,14 +1449,14 @@ with tab2:
                         st.session_state.batch_results = None
                         st.success("Batch results cleared.")
                         st.rerun()
-    
+
         except Exception as e:
             st.error(f"Batch processing error: {str(e)}")
     else:
         st.caption("Upload a cohort CSV to generate operational triage outputs.")
     
-    
-    
+    st.markdown('</div>', unsafe_allow_html=True)
+
 st.divider()
 st.markdown("""
 <div style='text-align:center; padding: 8px 0 18px 0; color: #6f6f6f; font-size: 0.95rem; line-height: 1.5;'>
