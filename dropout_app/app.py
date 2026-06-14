@@ -1383,12 +1383,19 @@ with tab2:
             if len(df_batch.columns) < 10:
                 st.error(f"Expected at least 10 columns, found {len(df_batch.columns)}")
             else:
+                # Slice the first 10 columns for the model features
                 features = df_batch.iloc[:, :10].copy()
+                
+                # Run predictions
                 probs = model.predict_proba(features.values)[:, 1]
     
+                # Add results to the dataframe
                 result_df = df_batch.copy()
                 result_df["Dropout_Probability"] = probs
                 result_df["Risk_Level"] = result_df["Dropout_Probability"].apply(lambda p: map_risk(float(p))[0])
+                
+                # Calculate Priority Score
+                # Note: Age is at index 8 in the new 10-feature list
                 result_df["Priority_Score"] = result_df.apply(
                     lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r.iloc[8])),
                     axis=1
@@ -1398,6 +1405,7 @@ with tab2:
     
                 st.session_state.batch_results = result_df
     
+                # --- Display Cohort Metrics ---
                 total = len(result_df)
                 high_count = int((result_df["Dropout_Probability"] >= high_threshold).sum())
                 mod_count = int(((result_df["Dropout_Probability"] >= moderate_threshold) & (result_df["Dropout_Probability"] < high_threshold)).sum())
@@ -1413,7 +1421,9 @@ with tab2:
                 with k4:
                     st.metric("Immediate Priority", p1_count)
     
+                # --- Display Charts ---
                 c1, c2 = st.columns(2)
+                
                 with c1:
                     fig, ax = plt.subplots(figsize=(8, 4))
                     ax.hist(result_df["Dropout_Probability"], bins=20, color=SDPS_PRIMARY, edgecolor=SDPS_BLACK)
@@ -1425,6 +1435,7 @@ with tab2:
                     ax.set_ylabel("Students")
                     ax.legend()
                     st.pyplot(fig)
+                    
                 with c2:
                     order = ["P1 - Immediate", "P2 - High", "P3 - Medium", "P4 - Routine"]
                     priority_counts = result_df["Priority_Band"].value_counts().reindex(order, fill_value=0)
@@ -1433,27 +1444,27 @@ with tab2:
                     ax.set_facecolor(SDPS_SOFT_GRAY)
                     ax.set_title("Operational Priority Queue")
                     ax.set_ylabel("Students")
-                    ax.tick_params(axis="x", rotation=15)
                     st.pyplot(fig)
-    
-                st.markdown("**Triage Queue (highest priority first)**")
-                triage = result_df.sort_values(by=["Priority_Score", "Dropout_Probability"], ascending=False)
-                st.dataframe(triage.head(100), width="stretch", height=380)
-    
-                csv_data = triage.to_csv(index=False)
-                triage_col1, triage_col2 = st.columns(2)
-                with triage_col1:
-                    st.download_button("Download Triage Plan", csv_data, "triage_plan.csv", "text/csv", use_container_width=True)
-                with triage_col2:
-                    if st.button("Clear Batch Results", use_container_width=True):
-                        st.session_state.batch_results = None
-                        st.success("Batch results cleared.")
-                        st.rerun()
+
+                # --- Display Detailed Table ---
+                st.subheader("Detailed Results")
+                st.dataframe(
+                    result_df, 
+                    use_container_width=True,
+                    height=400
+                )
+
+                # --- Download Button ---
+                csv = result_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download Results as CSV",
+                    data=csv,
+                    file_name=f'cohort_triage_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                    mime='text/csv',
+                )
 
         except Exception as e:
-            st.error(f"Batch processing error: {str(e)}")
-    else:
-        st.caption("Upload a cohort CSV to generate operational triage outputs.")
+            st.error(f"Error processing cohort file: {str(e)}")
     
     st.markdown('</div>', unsafe_allow_html=True)
 

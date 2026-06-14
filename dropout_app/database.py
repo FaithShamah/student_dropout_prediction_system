@@ -299,8 +299,6 @@ class Database:
                     'attendance': row['attendance'],
                     'qualification': row['qualification'],
                     'gender': row['gender'],
-                    'displaced': row['displaced'],
-                    'special_needs': row['special_needs'],
                     'scholarship': row['scholarship'],
                     'international': row['international'],
                     'risk_prob': row['risk_probability'],

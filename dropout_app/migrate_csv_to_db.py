@@ -69,7 +69,7 @@ def migrate_csv_to_database():
                 marital_status=marital_status,
                 course=course,
                 qualification=qualification,
-                application_order=application_order,  # <--- ADD TO SAVE CALL
+                application_order=application_order, 
                 risk_probability=risk_prob,
                 risk_level=risk_level,
                 priority_score=priority_score,
