@@ -139,15 +139,35 @@ def login_page():
             padding: 12px 24px;
             font-weight: 600;
             font-size: 1em;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
+            background: linear-gradient(135deg, #008080 0%, #0F4C81 100%) !important;
+            background-color: #008080 !important;
+            border: 1px solid #008080 !important;
+            color: #ffffff !important;
             transition: transform 0.2s, box-shadow 0.2s;
             width: 100%;
             margin-top: 10px;
         }
         .stButton button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #0F4C81 0%, #006666 100%) !important;
+            background-color: #0F4C81 !important;
+            border-color: #0F4C81 !important;
+            color: #ffffff !important;
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 25px rgba(0, 128, 128, 0.35);
+        }
+        div[data-testid="stForm"] button,
+        div[data-testid="stForm"] button[data-baseweb="button"] {
+            background: linear-gradient(135deg, #008080 0%, #0F4C81 100%) !important;
+            background-color: #008080 !important;
+            border: 1px solid #008080 !important;
+            color: #ffffff !important;
+        }
+        div[data-testid="stForm"] button:hover,
+        div[data-testid="stForm"] button[data-baseweb="button"]:hover {
+            background: linear-gradient(135deg, #0F4C81 0%, #006666 100%) !important;
+            background-color: #0F4C81 !important;
+            border-color: #0F4C81 !important;
+            box-shadow: 0 10px 25px rgba(0, 128, 128, 0.35) !important;
         }
         div[data-testid="stForm"] {
             background: #ffffff;
@@ -157,13 +177,13 @@ def login_page():
         }
         .login-header {
             text-align: center;
-            margin-bottom: 35px;
+            margin-bottom: 24px;
         }
         .login-title {
             font-size: 1.8em;
             color: #2d3748;
             font-weight: 700;
-            margin: 20px 0 0 0;
+            margin: 12px 0 0 0;
             line-height: 1;
             padding-bottom: 0;
         }
@@ -172,7 +192,7 @@ def login_page():
             color: #718096;
             font-weight: 600;
             margin: 0;
-            padding-top: 2px;
+            padding-top: 1px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -191,7 +211,7 @@ def login_page():
         with st.form("admin_login_form", clear_on_submit=False):
             st.markdown(f"""
                 <div class="login-header">
-                    <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="text-align: center; margin-bottom: 12px;">
                         {SDPS_LOGO_HTML}
                     </div>
                     <h1 class="login-title">Admin Login</h1>
@@ -199,8 +219,8 @@ def login_page():
                 </div>
             """, unsafe_allow_html=True)
             
-            username = st.text_input("Username", placeholder="Enter your username", key="login_username")
-            password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
+            username = st.text_input("Username", placeholder="e.g., admin", key="login_username")
+            password = st.text_input("Password", type="password", placeholder="Admin password", key="login_password")
             
             submit_button = st.form_submit_button("Sign In", type="primary", use_container_width=True)
             
@@ -263,8 +283,8 @@ st.markdown(f"""
         color: #000000;
     }}
     .block-container {{
-        padding-top: 1.2rem;
-        padding-bottom: 1.5rem;
+        padding-top: 0.65rem;
+        padding-bottom: 1rem;
         padding-left: 0.5rem;
         padding-right: 0.5rem;
     }}
@@ -388,8 +408,31 @@ st.markdown(f"""
         background-color: #ffffff !important;
     }}
     [data-testid="stSidebar"] [role="option"]:hover {{
-        background-color: #f4e7db !important;
-        color: #1f1f1f !important;
+        background-color: #E0E7FF !important;
+        color: {SDPS_PRIMARY} !important;
+    }}
+    [data-testid="stSidebar"] .profile-card,
+    [data-testid="stSidebar"] .schema-card {{
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 16px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        transition: background-color 0.2s ease, transform 0.2s ease;
+    }}
+    [data-testid="stSidebar"] .profile-card:hover,
+    [data-testid="stSidebar"] .schema-card:hover {{
+        background: rgba(255, 255, 255, 0.16) !important;
+        transform: translateY(-1px);
+    }}
+    [data-testid="stSidebar"] .schema-card table,
+    [data-testid="stSidebar"] .schema-card th,
+    [data-testid="stSidebar"] .schema-card td {{
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.22) !important;
+    }}
+    [data-testid="stSidebar"] .schema-card thead {{
+        background: rgba(255, 255, 255, 0.18) !important;
     }}
     [data-testid="stSidebar"] .stSlider [data-baseweb="slider"] div[role="slider"] {{
         background: {SDPS_SECONDARY};
@@ -409,18 +452,71 @@ st.markdown(f"""
         box-shadow: 0 4px 12px rgba(0, 128, 128, 0.3);
         transform: translateY(-1px);
     }}
+    div[data-testid="stForm"] .stButton>button[kind="primary"],
+    div[data-testid="stForm"] .stButton button,
+    div[data-testid="stForm"] .stButton > button,
+    div[data-testid="stForm"] button,
+    div[data-testid="stForm"] button[data-baseweb="button"],
+    .stButton>button[kind="primary"] {{
+        background: linear-gradient(135deg, {SDPS_SECONDARY} 0%, {SDPS_PRIMARY} 100%) !important;
+        background-color: {SDPS_SECONDARY} !important;
+        color: #ffffff !important;
+        border: 1px solid {SDPS_SECONDARY} !important;
+        transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }}
+    div[data-testid="stForm"] .stButton>button[kind="primary"]:hover,
+    div[data-testid="stForm"] .stButton button:hover,
+    div[data-testid="stForm"] .stButton > button:hover,
+    div[data-testid="stForm"] button:hover,
+    div[data-testid="stForm"] button[data-baseweb="button"]:hover,
+    .stButton>button[kind="primary"]:hover {{
+        background: linear-gradient(135deg, #006666 0%, {SDPS_PRIMARY} 100%) !important;
+        background-color: #006666 !important;
+        border-color: {SDPS_PRIMARY} !important;
+        box-shadow: 0 8px 18px rgba(0, 128, 128, 0.32) !important;
+        transform: translateY(-1px);
+    }}
+    [data-testid="stSidebar"] .stSlider [data-baseweb="slider"] div[role="slider"] {{
+        background: {SDPS_SECONDARY};
+    }}
     .hero-panel {{
         display: flex;
-        justify-content: space-between;
+        flex-direction: column;
+        justify-content: center;
         align-items: center;
-        gap: 24px;
-        padding: 26px 28px;
-        margin: 0 0 18px 0;
+        gap: 6px;
+        padding: 10px 24px;
+        margin: 0 -0.5rem 12px -0.5rem;
+        width: calc(100% + 1rem);
+        max-width: none;
         background: linear-gradient(135deg, #ffffff 0%, #fff6ee 100%);
         border: 1px solid #eadbcc;
         border-radius: 22px;
         box-shadow: 0 14px 40px rgba(107, 50, 0, 0.08);
         flex-wrap: wrap;
+        box-sizing: border-box;
+    }}
+    .hero-logo {{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 112px;
+        height: 112px;
+        overflow: hidden;
+        border-radius: 50%;
+        border: 4px solid #ffffff;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        margin: 0;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    }}
+    .hero-logo img {{
+        height: 100%;
+        width: 100%;
+        max-width: 100%;
+        object-fit: contain;
+        flex-shrink: 0;
+        border: 0;
     }}
     .hero-kicker {{
         margin: 0 0 8px 0;
@@ -431,31 +527,31 @@ st.markdown(f"""
         font-weight: 700;
     }}
     .main-header {{
-        font-size: 3.4em;
+        font-size: 2.65em;
         color: {SDPS_ACCENT};
         font-weight: 900;
         margin: 0;
         letter-spacing: -0.04em;
-        line-height: 1.02;
+        line-height: 1.04;
     }}
     .subtitle {{
-        font-size: 1.15em;
+        font-size: 1.06em;
         color: #7a5a43;
-        margin-top: -8px;
-        margin-bottom: 10px;
+        margin-top: -1px;
+        margin-bottom: 1px;
     }}
-    .hero-copy {{
+.hero-copy {{
         max-width: 760px;
         color: #5f5f5f;
-        line-height: 1.6;
-        margin: 0;
+        line-height: 1.25;
+        text-align: center;
+        margin: 0 auto;
     }}
     .hero-meta {{
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 160px;
-        flex: 0 0 160px;
+        flex: 0 0 auto;
     }}
     .hero-chip {{
         background: {SDPS_SECONDARY};
@@ -474,19 +570,19 @@ st.markdown(f"""
         letter-spacing: 0.14em;
         color: #8a6b56;
         font-weight: 700;
-        margin: 0 0 10px 0;
+        margin: 0 0 6px 0;
     }}
     .stats-grid {{
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-        margin: 0 0 16px 0;
+        gap: 12px;
+        margin: 0 0 12px 0;
     }}
     .stat-card {{
         background: #ffffff;
         border: 1px solid #eadbcc;
         border-radius: 16px;
-        padding: 14px 16px;
+        padding: 12px 14px;
         box-shadow: 0 8px 20px rgba(31, 111, 139, 0.05);
     }}
     .stat-label {{
@@ -497,11 +593,13 @@ st.markdown(f"""
         text-transform: uppercase;
         letter-spacing: 0.12em;
         font-weight: 700;
+        text-align: center;
     }}
     .stat-value {{
         color: #1f1f1f;
         font-size: 1.15rem;
         font-weight: 800;
+        text-align: center;
     }}
     .stat-note {{
         display: block;
@@ -509,46 +607,47 @@ st.markdown(f"""
         font-size: 0.92rem;
         margin-top: 6px;
         line-height: 1.4;
+        text-align: center;
     }}
     .risk-high {{ 
         background-color: #fff1e1; 
         border-left: 5px solid #E67E00;
-        padding: 15px; 
+        padding: 12px; 
         border-radius: 10px; 
-        margin: 10px 0;
+        margin: 7px 0;
     }}
     .risk-moderate {{ 
         background-color: #f4e7db; 
         border-left: 5px solid #6B3200;
-        padding: 15px; 
+        padding: 12px; 
         border-radius: 10px; 
-        margin: 10px 0;
+        margin: 7px 0;
     }}
     .risk-low {{ 
         background-color: #fafafa; 
         border-left: 5px solid #6B3200;
-        padding: 15px; 
+        padding: 12px; 
         border-radius: 10px; 
-        margin: 10px 0;
+        margin: 7px 0;
     }}
     .insight-box {{
         background-color: #f2f2f2;
         border-left: 4px solid #E67E00;
-        padding: 12px;
+        padding: 10px;
         border-radius: 10px;
-        margin: 10px 0;
+        margin: 7px 0;
     }}
     .notice-success {{
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         background: linear-gradient(135deg, #f4e7db 0%, #fff8ef 100%);
         border: 1px solid rgba(107, 50, 0, 0.18);
         border-left: 6px solid {SDPS_SECONDARY};
         color: #4f2400;
         border-radius: 14px;
-        padding: 14px 16px;
-        margin: 10px 0 14px 0;
+        padding: 11px 13px;
+        margin: 7px 0 10px 0;
         box-shadow: 0 10px 24px rgba(107, 50, 0, 0.08);
     }}
     .notice-success-icon {{
@@ -577,20 +676,42 @@ st.markdown(f"""
         background: #ffffff;
         border: 1px solid #eadbcc;
         border-radius: 14px;
-        padding: 12px 14px;
+        padding: 11px 12px;
         box-shadow: 0 6px 18px rgba(107, 50, 0, 0.06);
-        min-height: 112px;
+        min-height: 94px;
+        text-align: center !important;
     }}
-    div[data-testid="stMetric"] label {{
+    div[data-testid="stMetric"] label,
+    div[data-testid="stMetric"] [data-testid="stMetricLabel"] {{
         color: #6B3200;
+        text-align: center !important;
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }}
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"],
+    div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
+        text-align: center !important;
+        justify-content: center !important;
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+    }}
+    div[data-testid="stMetric"] [data-testid="stMetricDelta"] {{
+        text-align: center !important;
+        justify-content: center !important;
+        display: flex !important;
+        width: 100% !important;
     }}
     div[data-testid="stTabs"] [data-baseweb="tab-list"] {{
         display: flex;
         justify-content: space-between;
-        gap: 16px;
+        gap: 12px;
         width: 100%;
         background: linear-gradient(180deg, rgba(255, 252, 248, 0.98) 0%, rgba(246, 240, 233, 0.96) 100%);
-        padding: 8px;
+        padding: 7px;
+        margin-bottom: 12px;
         border-radius: 16px;
         border: 1px solid rgba(31, 111, 139, 0.12);
         position: relative;
@@ -601,25 +722,43 @@ st.markdown(f"""
     /* Responsive design for mobile */
     @media (max-width: 768px) {{
         .hero-panel {{
-            padding: 18px;
-            gap: 14px;
+            padding: 9px 18px;
+            gap: 5px;
+            margin: 0 -0.5rem 10px -0.5rem;
+            width: calc(100% + 1rem);
+            max-width: none;
             border-radius: 18px;
+            text-align: center;
+            justify-content: center;
+        }}
+        .hero-panel > div {{
+            text-align: center;
+        }}
+        .hero-logo {{
+            width: 96px;
+            height: 96px;
+        }}
+        .hero-logo img {{
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
         }}
         .main-header {{
-            font-size: 2.25rem;
+            font-size: 2.1rem;
             line-height: 1.08;
         }}
         .subtitle {{
-            font-size: 1rem;
-            margin-top: -4px;
+            font-size: 0.98rem;
+            margin-top: -3px;
+            margin-bottom: 2px;
         }}
         .hero-copy {{
-            font-size: 0.96rem;
-            line-height: 1.5;
+            font-size: 0.94rem;
+            line-height: 1.25;
+            text-align: center;
         }}
         .hero-meta {{
-            min-width: 112px;
-            flex: 0 0 112px;
+            flex: 0 0 auto;
         }}
         .hero-meta img {{
             width: 96px !important;
@@ -666,20 +805,36 @@ st.markdown(f"""
             padding-right: 0.75rem;
         }}
         .hero-panel {{
-            padding: 16px;
+            padding: 8px 14px;
+            gap: 4px;
+            margin: 0 -0.75rem 8px -0.75rem;
+            width: calc(100% + 1.5rem);
+            max-width: none;
+        }}
+        .hero-logo {{
+            width: 84px;
+            height: 84px;
+        }}
+        .hero-logo img {{
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
         }}
         .main-header {{
-            font-size: 1.85rem;
+            font-size: 1.72rem;
+            line-height: 1.08;
         }}
         .subtitle {{
-            font-size: 0.92rem;
+            font-size: 0.9rem;
+            margin-bottom: 1px;
         }}
         .hero-copy {{
-            font-size: 0.9rem;
+            font-size: 0.88rem;
+            line-height: 1.25;
+            text-align: center;
         }}
         .hero-meta {{
-            min-width: 92px;
-            flex: 0 0 92px;
+            flex: 0 0 auto;
         }}
         .hero-meta img {{
             width: 82px !important;
@@ -689,12 +844,20 @@ st.markdown(f"""
             min-height: 88px;
             padding: 9px 10px;
         }}
-        div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
-            font-size: 0.92rem;
+        div[data-testid="stMetric"] label {{
+            font-size: 0.8rem !important;
         }}
-        div[data-testid="stTabs"] button[role="tab"] {{
-            width: 138px;
-            font-size: 0.84rem;
+        div[data-testid="stMetric"] div[aria-describedby] {{
+            font-size: 0.92rem !important;
+        }}
+        div[data-testid="stMetric"] {{
+            text-align: center !important;
+        }}
+        .stat-card {{
+            padding: 12px 14px;
+        }}
+        [data-testid="stSidebar"] .schema-card {{
+            padding: 10px;
         }}
     }}
     /* Hide Streamlit/BaseWeb's active tab underline indicator */
@@ -725,7 +888,7 @@ st.markdown(f"""
         border-bottom: none !important;
         flex: 1;
         justify-content: center;
-        padding: 0.82rem 1rem;
+        padding: 0.72rem 0.9rem;
         white-space: nowrap;
         background: rgba(255, 255, 255, 0.78);
         box-shadow: none !important;
@@ -787,6 +950,33 @@ st.markdown(f"""
         width: auto;
         line-height: 1;
     }}
+    .centered-caption {{
+        text-align: center;
+        color: #6f6f6f;
+        font-size: 0.85rem;
+    }}
+    .subsection-header {{
+        font-size: 1.35em;
+        font-weight: 700;
+        color: #1f1f1f;
+        text-align: center;
+        margin: 0 0 11px 0;
+    }}
+    .form-instruction {{
+        text-align: center;
+        color: #5f5f5f;
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+        font-weight: normal;
+    }}
+    .stat-card {{
+        background: #ffffff;
+        border: 1px solid #eadbcc;
+        border-radius: 16px;
+        padding: 12px 14px;
+        box-shadow: 0 8px 20px rgba(31, 111, 139, 0.05);
+        text-align: center;
+    }}
     .stDownloadButton>button {{
         background: #6B3200;
         color: #ffffff;
@@ -803,7 +993,22 @@ st.markdown(f"""
     div[data-testid="stTabs"] [data-baseweb="tab-panel"] {{
         max-width: 1200px;
         margin: 0 auto;
-        padding: 0 10px;
+        padding: 6px 10px 0 10px;
+    }}
+    .stMarkdown p {{
+        margin: 0 0 8px 0;
+    }}
+    .stMarkdown p:last-child {{
+        margin-bottom: 0;
+    }}
+    div[data-testid="stDivider"] {{
+        margin: 10px 0 !important;
+    }}
+    div[data-testid="stFileUploader"] {{
+        margin-bottom: 10px !important;
+    }}
+    div[data-testid="stDataFrame"] {{
+        margin-top: 8px !important;
     }}
     .tab-content-wrapper {{
         max-width: 1200px;
@@ -865,13 +1070,13 @@ st.markdown(f"""
 
 st.markdown(f"""
     <div class="hero-panel">
-        <div style="display:flex; flex-direction:column; justify-content:center; flex:1 1 520px; min-width: 320px;">
+        <div class="hero-logo">
+            {SDPS_LOGO_HTML}
+        </div>
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; flex:0 1 520px; max-width: 760px; text-align: center;">
             <h1 class="main-header">Student Dropout Risk Prediction System</h1>
             <p class="subtitle">AI-assisted early warning dashboard for admission support</p>
             <p class="hero-copy">Single student assessment, intake triage, and model intelligence in one view.</p>
-        </div>
-        <div class="hero-meta">
-            {SDPS_LOGO_HTML}
         </div>
     </div>
     """,
@@ -1047,12 +1252,12 @@ else:
 
 # Professional Profile header with image.png
 st.sidebar.markdown(f"""
-    <div style="padding: 20px 16px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(15, 76, 129, 0.1); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+    <div class="profile-card" style="padding: 20px 16px; background: rgba(255, 255, 255, 0.1); border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
         <div style="text-align: center;">
             <img src="data:image/png;base64,{profile_img_base64}" alt="Profile" style="width: 70px; height: 70px; border-radius: 50%; border: 3px solid #0F4C81; box-shadow: 0 4px 12px rgba(15, 76, 129, 0.2); object-fit: cover;" />
         </div>
         <div style="text-align: center; margin-top: 12px;">
-            <div style="font-size: 0.7em; color: #6B3200; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Administrator</div>
+            <div style="font-size: 0.7em; color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Administrator</div>
         </div>
     </div>
 """, unsafe_allow_html=True)
@@ -1069,9 +1274,9 @@ if st.sidebar.button("Settings", use_container_width=True, key="settings_btn"):
 if st.session_state.get('show_settings', False):
     with st.sidebar.expander("Change Password", expanded=True):
         with st.form("change_password_form"):
-            old_pass = st.text_input("Current Password", type="password", key="old_pass")
-            new_pass = st.text_input("New Password", type="password", key="new_pass")
-            confirm_pass = st.text_input("Confirm Password", type="password", key="confirm_pass")
+            old_pass = st.text_input("Current Password", type="password", placeholder="Current password", key="old_pass")
+            new_pass = st.text_input("New Password", type="password", placeholder="New password", key="new_pass")
+            confirm_pass = st.text_input("Confirm Password", type="password", placeholder="Confirm new password", key="confirm_pass")
             
             if st.form_submit_button("Update Password", use_container_width=True):
                 if new_pass != confirm_pass:
@@ -1114,22 +1319,33 @@ if st.session_state.get('show_settings', False):
 if st.sidebar.button("Logout", use_container_width=True, type="secondary"):
     logout()
 
-with st.sidebar.expander("Model Input Schema", expanded=False):
-    st.markdown("""
-    **Required Features (in order):**
-    1. Marital status
-    2. Application mode
-    3. Application order
-    4. Course
-    5. Attendance
-    6. Previous qualification
-    7. Gender
-    8. Scholarship holder
-    9. Age
-    10. International
-    """)
+st.sidebar.markdown("""
+<div class="schema-card" style="padding: 14px 16px; margin-bottom: 18px;">
+    <div style="font-size: 0.95rem; font-weight: 800; color: #ffffff; margin-bottom: 10px;">Model Input Schema</div>
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; line-height: 1.35;">
+        <thead>
+            <tr>
+                <th style="width: 34px; padding: 6px; text-align: right;">#</th>
+                <th style="padding: 6px; text-align: left;">Feature</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td style="padding: 5px 6px; text-align: right;">1</td><td style="padding: 5px 6px;">Marital status</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">2</td><td style="padding: 5px 6px;">Application mode</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">3</td><td style="padding: 5px 6px;">Application order</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">4</td><td style="padding: 5px 6px;">Course</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">5</td><td style="padding: 5px 6px;">Attendance</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">6</td><td style="padding: 5px 6px;">Previous qualification</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">7</td><td style="padding: 5px 6px;">Gender</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">8</td><td style="padding: 5px 6px;">Scholarship holder</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">9</td><td style="padding: 5px 6px;">Age</td></tr>
+            <tr><td style="padding: 5px 6px; text-align: right;">10</td><td style="padding: 5px 6px;">International</td></tr>
+        </tbody>
+    </table>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown("## System Statistics")
+st.markdown('<p class="subsection-header">System Statistics</p>', unsafe_allow_html=True)
 
 if st.session_state.get("refresh_stats"):
     stats = db.get_prediction_stats()
@@ -1156,9 +1372,7 @@ with stat_col3:
 with stat_col4:
     st.metric("Low Risk Cases", low_risk_cases)
 
-st.caption(
-    f"History records loaded: {total_assessments}"
-)
+st.markdown(f'<p class="centered-caption">History records loaded: {total_assessments}</p>', unsafe_allow_html=True)
 
 
 def map_risk(prob):
@@ -1173,20 +1387,20 @@ tab1, tab2 = st.tabs(["Individual Assessment", "Cohort Triage (Admin)"])
 
 with tab1:
     st.markdown('<div class="tab-content-wrapper">', unsafe_allow_html=True)
-    st.subheader("Individual Student Assessment")
+    st.markdown('<p class="subsection-header">Individual Student Assessment</p>', unsafe_allow_html=True)
 
-    st.markdown("**Input student details to make predictions**")
+    st.markdown('<p class="form-instruction">Input student details to make predictions</p>', unsafe_allow_html=True)
     with st.form("student_assessment_form", clear_on_submit=True):
         marital = st.selectbox("Marital Status", list(MARITAL_STATUS.keys()), index=None, placeholder="Select marital status", key="marital")
-        application_mode = st.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select application mode", key="application_mode")
-        application_order = st.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="Enter application order")
+        application_mode = st.selectbox("Application Mode", list(APPLICATION_MODE.keys()), index=None, placeholder="Select admission route", key="application_mode")
+        application_order = st.number_input("Application Order", min_value=0, max_value=9, value=None, step=1, placeholder="e.g., 1")
         course = st.selectbox("Course", list(COURSE.keys()), index=None, placeholder="Select course", key="course")
-        attendance = st.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select attendance", key="attendance")
+        attendance = st.selectbox("Attendance", ["Daytime", "Evening"], index=None, placeholder="Select class schedule", key="attendance")
         qualification = st.selectbox("Previous Qualification", list(QUALIFICATION.keys()), index=None, placeholder="Select previous qualification", key="qual")
         gender = st.selectbox("Gender", ["Female", "Male"], index=None, placeholder="Select gender", key="gender")
         scholarship = st.selectbox("Scholarship Holder", ["No", "Yes"], index=None, placeholder="Select scholarship status", key="scholarship")
         international = st.selectbox("International", ["No", "Yes"], index=None, placeholder="Select international status", key="international")
-        age_text = st.text_input("Age at Enrollment", placeholder="Enter age (18 or above)", key="age")
+        age_text = st.text_input("Age at Enrollment", placeholder="e.g., 18", key="age")
 
         predict_clicked = st.form_submit_button("Run Assessment", use_container_width=True, type="primary")
 
@@ -1339,7 +1553,7 @@ with tab1:
             st.write(f"{idx}. {rec}")
 
     st.divider()
-    st.subheader("Recent Assessments")
+    st.markdown('<p class="subsection-header">Recent Assessments</p>', unsafe_allow_html=True)
     
     if st.session_state.history_notice:
         st.markdown(
@@ -1371,7 +1585,7 @@ with tab1:
 
 with tab2:
     st.markdown('<div class="tab-content-wrapper">', unsafe_allow_html=True)
-    st.subheader("Cohort Triage and Operations")
+    st.markdown('<p class="subsection-header">Cohort Triage and Operations</p>', unsafe_allow_html=True)
     
     # UPDATED: Added "xlsx" to the accepted file types
     uploaded = st.file_uploader(
@@ -1537,7 +1751,7 @@ with tab2:
                     st.pyplot(fig)
 
                 # --- Display Detailed Table ---
-                st.subheader("Detailed Results")
+                st.markdown('<p class="subsection-header">Detailed Results</p>', unsafe_allow_html=True)
                 st.dataframe(
                     result_df, 
                     use_container_width=True,
