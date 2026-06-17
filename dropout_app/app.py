@@ -2174,7 +2174,7 @@ def map_risk(prob):
     return "LOW RISK", "success"
 
 
-tab1, tab2 = st.tabs(["Individual Assessment", "Cohort Triage (Admin)"])
+tab1, tab2 = st.tabs(["Individual Assessment", "Cohort Triage"])
 
 with tab1:
     st.markdown('<div class="tab-content-wrapper">', unsafe_allow_html=True)
