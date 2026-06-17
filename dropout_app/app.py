@@ -176,7 +176,6 @@ def render_splash_screen():
                 {SDPS_LOGO_HTML or '<div style="font-size:2.4rem;font-weight:900;color:#fff;">SDPS</div>'}
             </div>
             <p class="sdps-splash-kicker">Student Dropout Prediction System</p>
-            <h1 class="sdps-splash-title">SDPS</h1>
             <p class="sdps-splash-subtitle">AI-assisted early warning dashboard for student retention and admission support.</p>
             <div class="sdps-splash-loader"><span></span></div>
         </div>
@@ -278,8 +277,8 @@ def render_auth_page(db):
         <div class="auth-logo">
             {SDPS_LOGO_HTML or '<div style="font-size:2rem;font-weight:900;color:#fff;">SDPS</div>'}
         </div>
-        <h1 class="auth-title">Welcome to SDPS</h1>
-        <p class="auth-subtitle">Sign in to access the student dropout risk prediction dashboard.</p>
+        <h1 class="auth-title">Welcome</h1>
+        <p class="auth-subtitle">Sign in to access the Student Dropout Risk Prediction System dashboard.</p>
     </div>
     """
 
@@ -1848,7 +1847,6 @@ QUALIFICATION = {
     "UACE Certificate": 1,
     "Diploma": 42,
     "Bachelor's Degree": 2,
-    "Degree": 3,
     "Master's Degree": 4,
     "Doctorate": 5,
     "Technical Certificate": 39
@@ -1861,7 +1859,6 @@ APPLICATION_MODE = {
     "Transfer Student": 42,
     "Change of Course": 43,
     "Technical/Vocational Entry": 44,
-    "Other Admission Route": 51
 }
 
 COURSE = {
@@ -2103,9 +2100,9 @@ schema_df = pd.DataFrame({
     "Description": [
         "Student's marital status at enrollment.",
         "Admission route through which the student entered the institution.",
-        "Ranking of the selected course among application choices.",
+        "First choice(0) to last choice(9) in the application preferences of the student.",
         "Academic program selected by the student.",
-        "Study schedule of the student.",
+        "Study schedule of the student chosen on application.",
         "Highest qualification obtained before admission.",
         "Student's gender.",
         "Whether the student receives scholarship funding.",
@@ -2114,11 +2111,11 @@ schema_df = pd.DataFrame({
     ],
     "Expected Values": [
         "Single, Married, Widower, Divorced, Facto Union, Legally Separated",
-        "Direct Entry, Diploma Entry, Mature Entry, Transfer",
+        "Direct Entry(UACE), Diploma Entry, Change of Course, Mature Age Entry, Transfer Student",
         "Integer (0-9)",
-        "Computer Science, IT, Nursing, Education, Business, etc.",
+        "Computer Science/IT, Business & Management, Tourism, Nursing,Journalism & Communication,Agriculture, Marketing, Education, Business & Management",
         "Daytime, Evening",
-        "UACE, Diploma, Bachelor's Degree, Master's Degree",
+        "UACE, Diploma,Technical certificate, Bachelor's Degree, Master's Degree, Doctorate",
         "Male, Female",
         "Yes, No",
         "Positive Integer",
@@ -2554,7 +2551,7 @@ with tab2:
 
                                 # --- Save to Database Option ---
                 st.markdown("---")
-                save_to_db = st.checkbox("💾 Save cohort results to database history", value=False)
+                save_to_db = st.checkbox("Save cohort results to database history", value=False)
 
                 if save_to_db:
                     with st.spinner("Saving predictions to database..."):
@@ -2600,7 +2597,7 @@ with tab2:
 
                 with dl_col1:
                     st.download_button(
-                        label="📄 Download as CSV",
+                        label="Download as CSV",
                         data=csv,
                         file_name=f'cohort_triage_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
                         mime='text/csv',
@@ -2609,7 +2606,7 @@ with tab2:
 
                 with dl_col2:
                     st.download_button(
-                        label="📊 Download as Excel",
+                        label="Download as Excel",
                         data=excel_data,
                         file_name=f'cohort_triage_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
