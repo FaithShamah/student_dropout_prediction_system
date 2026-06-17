@@ -85,7 +85,7 @@ class Database:
             if email:
                 response = self.client.table('admins').select(
                     'password_hash, email_verified'
-                ).eq('username', username).eq('email', email).execute()
+                ).eq('email', email).execute()
             else:
                 response = self.client.table('admins').select(
                     'password_hash, email_verified'
@@ -127,6 +127,12 @@ class Database:
         except Exception as e:
             self._handle_error(e)
             return None
+
+    def get_current_profile(self, username: str, account_type: str) -> Optional[Dict]:
+        """Helper to get profile dynamically based on account type"""
+        if account_type == 'user':
+            return self.get_user_profile(username)
+        return self.get_admin_profile(username)
     
     def update_admin_profile(
         self, 
@@ -223,7 +229,226 @@ class Database:
         except Exception as e:
             self._handle_error(e)
             return False
-    
+
+    def create_user(
+        self,
+        username: str,
+        email: str,
+        password: str,
+        full_name: str = None,
+        profile_image: str = None
+    ) -> tuple[bool, str]:
+        """Create a regular user account in the users table."""
+        try:
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            response = self.client.table('users').insert({
+                'username': username,
+                'email': email,
+                'password_hash': password_hash,
+                'full_name': full_name or username,
+                'profile_image': profile_image
+            }).execute()
+            return True, "Account created successfully" if response.data else "Account creation returned no data"
+        except Exception as e:
+            message = self._handle_error(e)
+            if 'duplicate' in str(e).lower() or 'unique' in str(e).lower():
+                return False, "A user with this username or email already exists."
+            return False, message or "Could not create account."
+
+    def verify_user(self, username_or_email: str, password: str) -> tuple[bool, str | None]:
+        """Verify a regular user by username or email."""
+        try:
+            response = self.client.table('users').select(
+                'username, password_hash, email_verified'
+            ).eq('username', username_or_email).execute()
+
+            if not response.data:
+                response = self.client.table('users').select(
+                    'username, password_hash, email_verified'
+                ).eq('email', username_or_email).execute()
+
+            if not response.data:
+                return False, None
+
+            stored_hash = response.data[0]['password_hash']
+            if isinstance(stored_hash, str):
+                stored_hash = stored_hash.encode('utf-8')
+
+            if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+                return True, response.data[0]['username']
+            return False, None
+        except Exception as e:
+            self._handle_error(e)
+            return False, None
+
+    def verify_user_or_admin(self, username_or_email: str, password: str) -> tuple[bool, str | None, str | None, str]:
+        """Verify either a regular user or an admin account."""
+        user_verified, user_name = self.verify_user(username_or_email, password)
+        if user_verified:
+            return True, user_name, "user", "Welcome back"
+
+        email_lookup = username_or_email if "@" in username_or_email else None
+        admin_verified = self.verify_admin(username_or_email, password, email=email_lookup)
+        if admin_verified:
+            return True, username_or_email, "admin", "Welcome back"
+
+        return False, None, None, "Invalid username/email or password."
+
+    def get_user_profile(self, username: str) -> Optional[Dict]:
+        """Get regular user profile information."""
+        try:
+            response = self.client.table('users').select(
+                'username, email, full_name, email_verified, profile_image'
+            ).eq('username', username).execute()
+
+            if response.data:
+                data = response.data[0]
+                return {
+                    'username': data['username'],
+                    'email': data['email'],
+                    'full_name': data.get('full_name') or data['username'],
+                    'email_verified': data['email_verified'] == 1 or data['email_verified'] is True,
+                    'profile_image': data['profile_image']
+                }
+            return None
+        except Exception as e:
+            self._handle_error(e)
+            return None
+
+    def change_user_password(
+        self,
+        username: str,
+        old_password: str,
+        new_password: str
+    ) -> tuple[bool, str]:
+        """Change a regular user's password."""
+        verified, _ = self.verify_user(username, old_password)
+        if not verified:
+            return False, "Current password is incorrect"
+
+        try:
+            new_hash = bcrypt.hashpw(
+                new_password.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+
+            response = self.client.table('users').update({
+                'password_hash': new_hash
+            }).eq('username', username).execute()
+
+            return (len(response.data) > 0), "Password updated successfully" if response.data else "Could not update password."
+        except Exception as e:
+            return False, self._handle_error(e) or "Could not update password."
+
+    def get_current_profile(self, username: str, account_type: str) -> Optional[Dict]:
+        """Return the current admin or user profile."""
+        if account_type == "user":
+            return self.get_user_profile(username)
+        return self.get_admin_profile(username)
+
+    def get_user_by_email(self, email: str) -> Optional[Dict]:
+        """Get user by email to help with password reset."""
+        try:
+            response = self.client.table('users').select('*').eq('email', email).execute()
+            if response.data:
+                return response.data[0]
+            
+            response = self.client.table('admins').select('*').eq('email', email).execute()
+            if response.data:
+                data = response.data[0]
+                data['is_admin'] = True
+                return data
+            return None
+        except Exception as e:
+            self._handle_error(e)
+            return None
+
+    def set_verification_code(self, username_or_email: str, code: str) -> bool:
+        """Save a verification code for a user or admin."""
+        try:
+            # Try users first
+            response = self.client.table('users').update({'verification_code': code}).eq('username', username_or_email).execute()
+            if not response.data:
+                response = self.client.table('users').update({'verification_code': code}).eq('email', username_or_email).execute()
+            
+            # If not in users, try admins
+            if not response.data:
+                response = self.client.table('admins').update({'verification_code': code}).eq('username', username_or_email).execute()
+                if not response.data:
+                    response = self.client.table('admins').update({'verification_code': code}).eq('email', username_or_email).execute()
+            
+            return len(response.data) > 0
+        except Exception as e:
+            self._handle_error(e)
+            return False
+
+    def verify_email_code(self, username: str, code: str) -> bool:
+        """Verify the OTP code and set email_verified to True."""
+        try:
+            # Check users
+            response = self.client.table('users').select('verification_code').eq('username', username).execute()
+            is_admin = False
+            if not response.data:
+                response = self.client.table('admins').select('verification_code').eq('username', username).execute()
+                is_admin = True
+
+            if not response.data:
+                return False
+
+            stored_code = response.data[0].get('verification_code')
+            if stored_code and stored_code == code:
+                table = 'admins' if is_admin else 'users'
+                # Clear code and set verified
+                self.client.table(table).update({
+                    'verification_code': None,
+                    'email_verified': True
+                }).eq('username', username).execute()
+                return True
+            return False
+        except Exception as e:
+            self._handle_error(e)
+            return False
+
+    def reset_password_with_code(self, email: str, code: str, new_password: str) -> tuple[bool, str]:
+        """Reset password using the OTP code."""
+        try:
+            user_data = self.get_user_by_email(email)
+            if not user_data:
+                return False, "User not found."
+
+            if user_data.get('verification_code') != code:
+                return False, "Invalid or expired verification code."
+
+            new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            table = 'admins' if user_data.get('is_admin') else 'users'
+
+            self.client.table(table).update({
+                'password_hash': new_hash,
+                'verification_code': None
+            }).eq('email', email).execute()
+
+            return True, "Password reset successfully."
+        except Exception as e:
+            return False, self._handle_error(e)
+
+    def get_all_users(self) -> List[Dict]:
+        """Get all regular users for admin dashboard."""
+        try:
+            response = self.client.table('users').select('id, username, email, full_name, email_verified, created_at').execute()
+            return response.data if response.data else []
+        except Exception as e:
+            self._handle_error(e)
+            return []
+
+    def delete_user(self, username: str) -> bool:
+        """Delete a regular user account."""
+        try:
+            response = self.client.table('users').delete().eq('username', username).execute()
+            return len(response.data) > 0
+        except Exception as e:
+            self._handle_error(e)
+            return False
+
     # ============================================================================
     # PREDICTION HISTORY METHODS
     # ============================================================================

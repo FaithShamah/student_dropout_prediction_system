@@ -3,7 +3,9 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+import re
 import base64
+import time
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -11,6 +13,9 @@ import warnings
 from dotenv import load_dotenv
 from database import Database
 from io import BytesIO
+from utils.email_service import EmailService
+
+email_service = EmailService()
 
 warnings.filterwarnings("ignore")
 load_dotenv()
@@ -24,6 +29,12 @@ SDPS_SOFT_BLUE = "#E0E7FF"
 SDPS_SOFT_TEAL = "#CCFBF1"
 SDPS_SOFT_GRAY = "#F9FAFB"
 SDPS_ACCENT = "#F59E0B"    # Amber/Gold accent
+SDPS_DARK_BG = "#0B1120"
+SDPS_DARK_SURFACE = "#111827"
+SDPS_DARK_SURFACE_2 = "#1F2937"
+SDPS_DARK_TEXT = "#E5E7EB"
+SDPS_DARK_MUTED = "#94A3B8"
+SDPS_DARK_BORDER = "#334155"
 
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "logo__2_-removebg-preview.png")
 
@@ -37,6 +48,820 @@ def load_logo_base64():
 
     with open(LOGO_PATH, "rb") as logo_file:
         return base64.b64encode(logo_file.read()).decode("utf-8")
+
+
+def render_splash_screen():
+    st.markdown(f"""
+    <style>
+    @keyframes sdpsFloat {{
+        0%, 100% {{ transform: translateY(0) scale(1); }}
+        50% {{ transform: translateY(-10px) scale(1.02); }}
+    }}
+    @keyframes sdpsPulse {{
+        0%, 100% {{ opacity: 0.35; transform: scale(0.96); }}
+        50% {{ opacity: 0.9; transform: scale(1); }}
+    }}
+    @keyframes sdpsProgress {{
+        0% {{ transform: translateX(-100%); }}
+        100% {{ transform: translateX(100%); }}
+    }}
+    .sdps-splash {{
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background:
+            radial-gradient(circle at 20% 20%, rgba(0, 128, 128, 0.28), transparent 30%),
+            radial-gradient(circle at 80% 30%, rgba(15, 76, 129, 0.34), transparent 34%),
+            linear-gradient(135deg, #07111f 0%, #0f172a 48%, #102f45 100%);
+        overflow: hidden;
+        position: relative;
+    }}
+    .sdps-splash::before,
+    .sdps-splash::after {{
+        content: "";
+        position: absolute;
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        filter: blur(2px);
+        opacity: 0.18;
+        animation: sdpsPulse 4s ease-in-out infinite;
+    }}
+    .sdps-splash::before {{
+        left: -90px;
+        bottom: -110px;
+        background: {SDPS_ACCENT};
+    }}
+    .sdps-splash::after {{
+        right: -120px;
+        top: -100px;
+        background: {SDPS_SECONDARY};
+        animation-delay: 1s;
+    }}
+    .sdps-splash-card {{
+        position: relative;
+        z-index: 1;
+        width: min(560px, 100%);
+        text-align: center;
+        padding: 44px 34px 34px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 32px;
+        background: rgba(15, 23, 42, 0.78);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(18px);
+        animation: sdpsFloat 5s ease-in-out infinite;
+    }}
+    .sdps-splash-logo {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 132px;
+        height: 132px;
+        margin-bottom: 18px;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.82);
+        background: #ffffff;
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+    }}
+    .sdps-splash-logo img {{
+        width: 92px;
+        height: 92px;
+        object-fit: contain;
+    }}
+    .sdps-splash-kicker {{
+        margin: 0 0 8px;
+        color: {SDPS_ACCENT};
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+    }}
+    .sdps-splash-title {{
+        margin: 0;
+        color: #ffffff;
+        font-size: clamp(2.1rem, 7vw, 4.4rem);
+        font-weight: 900;
+        letter-spacing: -0.06em;
+        line-height: 0.95;
+    }}
+    .sdps-splash-subtitle {{
+        margin: 14px auto 0;
+        max-width: 420px;
+        color: #cbd5e1;
+        font-size: 1.02rem;
+        line-height: 1.55;
+    }}
+    .sdps-splash-loader {{
+        position: relative;
+        width: min(320px, 70%);
+        height: 8px;
+        margin: 28px auto 0;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+    }}
+    .sdps-splash-loader span {{
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, {SDPS_SECONDARY}, {SDPS_ACCENT});
+        animation: sdpsProgress 1.45s ease-in-out infinite;
+    }}
+    </style>
+    <div class="sdps-splash">
+        <div class="sdps-splash-card">
+            <div class="sdps-splash-logo">
+                {SDPS_LOGO_HTML or '<div style="font-size:2.4rem;font-weight:900;color:#fff;">SDPS</div>'}
+            </div>
+            <p class="sdps-splash-kicker">Student Dropout Prediction System</p>
+            <h1 class="sdps-splash-title">SDPS</h1>
+            <p class="sdps-splash-subtitle">AI-assisted early warning dashboard for student retention and admission support.</p>
+            <div class="sdps-splash-loader"><span></span></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_auth_page(db):
+    if not st.session_state.get("splash_done", False):
+        st.session_state.splash_done = True
+        render_splash_screen()
+        time.sleep(3)
+        st.rerun()
+
+    SDPS_LOGO_HTML = f'<img src="data:image/png;base64,{load_logo_base64()}">' if load_logo_base64() else ""
+    if "auth_mode" not in st.session_state:
+        st.session_state.auth_mode = "login"
+
+    st.markdown(f"""
+    <style>
+    [data-testid="stHeader"] {{
+        background: transparent !important;
+    }}
+    .stApp {{
+        background:
+            radial-gradient(circle at 15% 15%, rgba(0, 128, 128, 0.22), transparent 28%),
+            radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.14), transparent 30%),
+            linear-gradient(135deg, #07111f 0%, #0f172a 52%, #102f45 100%) !important;
+    }}
+    [data-testid="block-container"] {{
+        width: min(420px, 100%) !important;
+        max-width: 420px !important;
+        padding-top: 8vh !important;
+        padding-bottom: 5vh !important;
+    }}
+    [data-testid="stTextInput"] label p {{
+        color: #e5e7eb !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+    }}
+    .auth-brand {{
+        text-align: center;
+        margin-bottom: 22px;
+    }}
+    .auth-logo {{
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 14px;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+    }}
+    .auth-logo img {{
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+    }}
+    .auth-title {{
+        margin: 0;
+        color: #ffffff;
+        font-size: 1.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+    }}
+    .auth-subtitle {{
+        margin: 8px 0 0;
+        color: #cbd5e1;
+        font-size: 0.85rem;
+        line-height: 1.45;
+    }}
+    .auth-note {{
+        margin: 18px 0 0;
+        color: #94a3b8;
+        font-size: 0.88rem;
+        line-height: 1.5;
+        text-align: center;
+    }}
+    .auth-note strong {{
+        color: #e5e7eb;
+    }}
+    [data-testid="stForm"] {{
+        background: rgba(22, 33, 51, 0.85) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 24px !important;
+        padding: 40px 30px 30px !important;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(16px) !important;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    brand_html = f"""
+    <div class="auth-brand">
+        <div class="auth-logo">
+            {SDPS_LOGO_HTML or '<div style="font-size:2rem;font-weight:900;color:#fff;">SDPS</div>'}
+        </div>
+        <h1 class="auth-title">Welcome to SDPS</h1>
+        <p class="auth-subtitle">Sign in to access the student dropout risk prediction dashboard.</p>
+    </div>
+    """
+
+    brand_html_create = f"""
+    <div class="auth-brand">
+        <div class="auth-logo">
+            {SDPS_LOGO_HTML or '<div style="font-size:2rem;font-weight:900;color:#fff;">SDPS</div>'}
+        </div>
+        <h1 class="auth-title">Create an Account</h1>
+        <p class="auth-subtitle">Join SDPS to start predicting student dropout risks.</p>
+    </div>
+    """
+
+    if st.session_state.get("creation_success"):
+        st.success("Account created successfully! Please sign in with your new credentials.")
+        st.session_state.creation_success = False
+
+    if st.session_state.auth_mode == "login":
+        with st.form("user_login_form", clear_on_submit=False):
+            st.markdown(brand_html, unsafe_allow_html=True)
+            identifier = st.text_input("Username or Email", placeholder="Enter your username or email", key="login_identifier")
+            password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
+            if st.form_submit_button("Sign In", type="primary", use_container_width=True):
+                verified, username, account_type, message = db.verify_user_or_admin(identifier.strip(), password)
+                if verified:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.account_type = account_type
+                    st.query_params["authenticated"] = username
+                    st.query_params["account_type"] = account_type
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.error(message)
+                    
+        st.write("")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Create an Account", use_container_width=True, type="secondary"):
+                st.session_state.auth_mode = "create"
+                st.rerun()
+        with col2:
+            if st.button("Forgot Password?", use_container_width=True, type="secondary"):
+                st.session_state.auth_mode = "forgot_password"
+                st.rerun()
+            
+    elif st.session_state.auth_mode == "create":
+        with st.form("user_create_form", clear_on_submit=False):
+            st.markdown(brand_html_create, unsafe_allow_html=True)
+            full_name = st.text_input("Full Name", placeholder="e.g., Jane Nakato", key="create_full_name")
+            username = st.text_input("Username", placeholder="Choose a username", key="create_username")
+            email = st.text_input("Email", placeholder="name@example.com", key="create_email")
+            new_password = st.text_input("Password", type="password", placeholder="At least 8 characters", key="create_password")
+            confirm_password = st.text_input("Confirm Password", type="password", placeholder="Repeat password", key="create_confirm_password")
+            if st.form_submit_button("Create Account", type="primary", use_container_width=True):
+                full_name = full_name.strip()
+                username = username.strip()
+                email = email.strip()
+
+                if not full_name or not username or not email or not new_password or not confirm_password:
+                    st.error("Please complete all fields.")
+                elif len(username) < 3:
+                    st.error("Username must be at least 3 characters.")
+                elif not re.fullmatch(r"[A-Za-z0-9_.-]+", username):
+                    st.error("Username can only contain letters, numbers, dots, underscores, and hyphens.")
+                elif not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", email):
+                    st.error("Enter a valid email address.")
+                elif new_password != confirm_password:
+                    st.error("Passwords do not match.")
+                elif len(new_password) < 8:
+                    st.error("Password must be at least 8 characters.")
+                elif not any(char.isupper() for char in new_password) or not any(char.isdigit() for char in new_password):
+                    st.error("Password must contain at least one uppercase letter and one number.")
+                else:
+                    created, create_message = db.create_user(username, email, new_password, full_name=full_name)
+                    if created:
+                        otp = email_service.generate_otp()
+                        db.set_verification_code(email, otp)
+                        email_service.send_verification_email(email, otp)
+                        
+                        st.session_state.creation_success = True
+                        st.session_state.auth_mode = "login"
+                        st.rerun()
+                    else:
+                        st.error(create_message)
+                        
+        st.write("")
+        if st.button("Already have an account? Sign In", use_container_width=True, type="secondary"):
+            st.session_state.auth_mode = "login"
+            st.rerun()
+
+    elif st.session_state.auth_mode == "verify_email":
+        with st.form("verify_email_form", clear_on_submit=False):
+            st.markdown(brand_html, unsafe_allow_html=True)
+            st.info(f"Please enter the 6-digit verification code sent to your email.")
+            otp_input = st.text_input("Verification Code", key="verify_otp")
+            if st.form_submit_button("Verify Email", type="primary", use_container_width=True):
+                if db.verify_email_code(st.session_state.verify_email_username, otp_input.strip()):
+                    st.success("Email verified successfully! You can now log in.")
+                    st.session_state.auth_mode = "login"
+                    st.rerun()
+                else:
+                    st.error("Invalid verification code.")
+        
+        st.write("")
+        if st.button("Back to Login", use_container_width=True, type="secondary"):
+            st.session_state.auth_mode = "login"
+            st.rerun()
+
+    elif st.session_state.auth_mode == "forgot_password":
+        with st.form("forgot_password_form", clear_on_submit=False):
+            st.markdown(brand_html, unsafe_allow_html=True)
+            st.info("Enter your email address to receive a password reset code.")
+            reset_email = st.text_input("Email Address", key="reset_email_input")
+            if st.form_submit_button("Send Reset Code", type="primary", use_container_width=True):
+                user_data = db.get_user_by_email(reset_email.strip())
+                if user_data:
+                    otp = email_service.generate_otp()
+                    db.set_verification_code(reset_email.strip(), otp)
+                    email_service.send_password_reset_email(reset_email.strip(), otp)
+                    st.session_state.reset_email_target = reset_email.strip()
+                    st.session_state.auth_mode = "reset_password"
+                    st.rerun()
+                else:
+                    st.error("Email not found.")
+        
+        st.write("")
+        if st.button("Back to Login", use_container_width=True, type="secondary"):
+            st.session_state.auth_mode = "login"
+            st.rerun()
+
+    elif st.session_state.auth_mode == "reset_password":
+        with st.form("reset_password_form", clear_on_submit=False):
+            st.markdown(brand_html, unsafe_allow_html=True)
+            st.info(f"Enter the code sent to {st.session_state.reset_email_target} and your new password.")
+            reset_otp = st.text_input("Reset Code", key="reset_otp_input")
+            new_pass = st.text_input("New Password", type="password", key="new_pass_input")
+            if st.form_submit_button("Reset Password", type="primary", use_container_width=True):
+                if len(new_pass) < 8 or not any(c.isupper() for c in new_pass) or not any(c.isdigit() for c in new_pass):
+                    st.error("Password must be at least 8 chars, 1 uppercase, 1 number.")
+                else:
+                    success, msg = db.reset_password_with_code(st.session_state.reset_email_target, reset_otp.strip(), new_pass)
+                    if success:
+                        st.success("Password reset successfully! Please log in.")
+                        st.session_state.auth_mode = "login"
+                        st.rerun()
+                    else:
+                        st.error(msg)
+                        
+        st.write("")
+        if st.button("Cancel", use_container_width=True, type="secondary"):
+            st.session_state.auth_mode = "login"
+            st.rerun()
+
+    st.markdown(f"""
+    <p class="auth-note">
+        <strong>Admin Portal:</strong> Use your designated administrator credentials to sign in.<br>
+        <strong>New users:</strong> Create an account above, then sign in to access the dashboard.
+    </p>
+    """, unsafe_allow_html=True)
+
+
+def render_ui_css(dark_mode: bool = True):
+    if dark_mode:
+        css_vars = f"""
+        :root {{
+            --sdps-bg: {SDPS_DARK_BG};
+            --sdps-bg-2: #0f172a;
+            --sdps-surface: {SDPS_DARK_SURFACE};
+            --sdps-surface-2: {SDPS_DARK_SURFACE_2};
+            --sdps-text: {SDPS_DARK_TEXT};
+            --sdps-muted: {SDPS_DARK_MUTED};
+            --sdps-border: {SDPS_DARK_BORDER};
+            --sdps-input: #0f172a;
+            --sdps-primary: {SDPS_PRIMARY};
+            --sdps-secondary: {SDPS_SECONDARY};
+            --sdps-accent: {SDPS_ACCENT};
+            --sdps-danger: #ef4444;
+            --sdps-warning: #f59e0b;
+            --sdps-success: #10b981;
+            --sdps-card-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+        }}
+        """
+    else:
+        css_vars = """
+        :root {
+            --sdps-bg: #f8fafc;
+            --sdps-bg-2: #ffffff;
+            --sdps-surface: #ffffff;
+            --sdps-surface-2: #f1f5f9;
+            --sdps-text: #111827;
+            --sdps-muted: #64748b;
+            --sdps-border: #dbe3ef;
+            --sdps-input: #ffffff;
+            --sdps-primary: #0F4C81;
+            --sdps-secondary: #008080;
+            --sdps-accent: #F59E0B;
+            --sdps-danger: #dc2626;
+            --sdps-warning: #d97706;
+            --sdps-success: #059669;
+            --sdps-card-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+        }
+        """
+
+    st.markdown(f"""
+    <style>
+    {css_vars}
+    * {{
+        scrollbar-color: var(--sdps-secondary) var(--sdps-surface-2);
+        scrollbar-width: thin;
+    }}
+    *::-webkit-scrollbar {{
+        width: 10px;
+        height: 10px;
+    }}
+    *::-webkit-scrollbar-track {{
+        background: var(--sdps-surface-2);
+        border-radius: 999px;
+    }}
+    *::-webkit-scrollbar-thumb {{
+        background: var(--sdps-secondary);
+        border-radius: 999px;
+    }}
+    [data-testid="stHeader"] {{
+        background-color: transparent !important;
+    }}
+    .stApp {{
+        background:
+            radial-gradient(circle at 10% 10%, rgba(0, 128, 128, 0.13), transparent 28%),
+            radial-gradient(circle at 90% 0%, rgba(245, 158, 11, 0.08), transparent 30%),
+            linear-gradient(180deg, var(--sdps-bg) 0%, var(--sdps-bg-2) 100%) !important;
+        color: var(--sdps-text) !important;
+    }}
+    .block-container {{
+        padding-top: 0rem !important;
+        padding-bottom: 1.25rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        margin-top: 0 !important;
+    }}
+    [data-testid="stSidebar"] {{
+        background: linear-gradient(180deg, #07111f 0%, #0f2740 55%, #0b1120 100%) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 12px 0 30px rgba(0, 0, 0, 0.22) !important;
+    }}
+    [data-testid="stSidebar"] *,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stMarkdown,
+    [data-testid="stSidebar"] .stCaption,
+    [data-testid="stSidebar"] .stMarkdown p,
+    [data-testid="stSidebar"] .stMarkdown h2,
+    [data-testid="stSidebar"] .stMarkdown h3 {{
+        color: #e5e7eb !important;
+    }}
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea,
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {{
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        caret-color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }}
+    [data-testid="stSidebar"] input::placeholder,
+    [data-testid="stSidebar"] textarea::placeholder {{
+        color: #94a3b8 !important;
+        opacity: 0.8;
+        -webkit-text-fill-color: #94a3b8 !important;
+    }}
+    [data-testid="stSidebar"] [data-baseweb="menu"] {{
+        background-color: #111827 !important;
+        color: #e5e7eb !important;
+    }}
+    [data-testid="stSidebar"] [role="option"] {{
+        color: #e5e7eb !important;
+        background-color: #111827 !important;
+    }}
+    [data-testid="stSidebar"] [role="option"]:hover {{
+        color: #ffffff !important;
+        background-color: rgba(15, 76, 129, 0.55) !important;
+    }}
+    .stTextInput > div > input,
+    .stNumberInput > div > input,
+    .stTextArea textarea,
+    .stSelectbox [data-baseweb="select"] > div,
+    .stMultiselect [data-baseweb="select"] > div {{
+        background-color: var(--sdps-input) !important;
+        color: var(--sdps-text) !important;
+        -webkit-text-fill-color: var(--sdps-text) !important;
+        caret-color: var(--sdps-text) !important;
+        border: 1px solid var(--sdps-border) !important;
+        box-shadow: none !important;
+    }}
+    .stTextInput > div > input::placeholder,
+    .stNumberInput > div > input::placeholder {{
+        color: var(--sdps-muted) !important;
+        opacity: 0.82;
+    }}
+    .stMarkdown,
+    .stMarkdown *,
+    .stCaption,
+    .stMetric *,
+    .stDataFrame *,
+    .stDataFrame table,
+    .stDataFrame thead,
+    .stDataFrame tbody {{
+        color: var(--sdps-text) !important;
+    }}
+    [data-testid="stExpander"] {{
+        background: transparent !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 12px !important;
+    }}
+    [data-testid="stExpander"] summary {{
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: #e5e7eb !important;
+        border-radius: 12px !important;
+    }}
+    [data-testid="stExpander"] summary:hover {{
+        background: rgba(15, 76, 129, 0.4) !important;
+        color: #ffffff !important;
+    }}
+    [data-testid="stExpander"] summary svg {{
+        fill: #e5e7eb !important;
+    }}
+    [data-testid="stExpander"] summary p {{
+        font-weight: 600 !important;
+    }}
+    .stDataFrame table,
+    div[data-testid="stDataFrame"] {{
+        background-color: rgba(17, 24, 39, 0.72) !important;
+        border: 1px solid var(--sdps-border) !important;
+        border-radius: 16px !important;
+        overflow: hidden;
+    }}
+    div[data-testid="stDataFrame"] thead tr,
+    div[data-testid="stDataFrame"] thead th {{
+        background-color: var(--sdps-surface-2) !important;
+        color: var(--sdps-muted) !important;
+    }}
+    div[data-testid="stDataFrame"] tbody tr:nth-child(even) {{
+        background-color: rgba(255, 255, 255, 0.035) !important;
+    }}
+    div[data-testid="stMetric"] {{
+        background: linear-gradient(180deg, var(--sdps-surface) 0%, rgba(17, 24, 39, 0.86) 100%) !important;
+        border: 1px solid var(--sdps-border) !important;
+        border-radius: 18px !important;
+        box-shadow: var(--sdps-card-shadow) !important;
+        color: var(--sdps-text) !important;
+        min-height: 96px !important;
+    }}
+    div[data-testid="stMetric"] label,
+    div[data-testid="stMetric"] [data-testid="stMetricLabel"] {{
+        color: var(--sdps-muted) !important;
+    }}
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"],
+    div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
+        color: #ffffff !important;
+    }}
+    .stTabs [data-baseweb="tab-list"] {{
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.035) 100%) !important;
+        border: 1px solid var(--sdps-border) !important;
+        box-shadow: var(--sdps-card-shadow) !important;
+    }}
+    div[data-testid="stTabs"] button[role="tab"] {{
+        color: var(--sdps-muted) !important;
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid transparent !important;
+    }}
+    div[data-testid="stTabs"] button[role="tab"]:hover {{
+        color: #ffffff !important;
+        background: rgba(15, 76, 129, 0.38) !important;
+        border-color: rgba(255, 255, 255, 0.16) !important;
+    }}
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {{
+        color: #ffffff !important;
+        background: linear-gradient(135deg, {SDPS_SECONDARY} 0%, {SDPS_PRIMARY} 100%) !important;
+        border-color: rgba(255, 255, 255, 0.18) !important;
+        box-shadow: 0 10px 24px rgba(0, 128, 128, 0.22) !important;
+    }}
+    .stButton > button,
+    div[data-testid="stButton"] > button,
+    div[data-testid="stFormSubmitButton"] > button,
+    button[kind="primary"],
+    button[kind="secondary"],
+    button[kind="tertiary"] {{
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 0.9rem !important;
+        min-height: 2.25rem !important;
+        padding: 0.45rem 0.85rem !important;
+        transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, color 160ms ease !important;
+    }}
+    .stButton > button,
+    div[data-testid="stButton"] > button,
+    div[data-testid="stFormSubmitButton"] > button,
+    button[kind="primary"] {{
+        background: linear-gradient(135deg, {SDPS_SECONDARY} 0%, {SDPS_PRIMARY} 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 0 8px 20px rgba(0, 128, 128, 0.18) !important;
+    }}
+    .stButton > button:hover,
+    div[data-testid="stButton"] > button:hover,
+    div[data-testid="stFormSubmitButton"] > button:hover,
+    button[kind="primary"]:hover {{
+        background: linear-gradient(135deg, #006666 0%, #0a3b66 100%) !important;
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.22) !important;
+        box-shadow: 0 12px 28px rgba(0, 128, 128, 0.28) !important;
+        transform: translateY(-1px) !important;
+    }}
+    button[kind="secondary"],
+    button[kind="tertiary"] {{
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #e5e7eb !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: none !important;
+    }}
+    button[kind="secondary"]:hover,
+    button[kind="tertiary"]:hover {{
+        background: rgba(15, 76, 129, 0.38) !important;
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.22) !important;
+        transform: translateY(-1px) !important;
+    }}
+    .stDownloadButton > button,
+    .stFileUploader button {{
+        background: linear-gradient(135deg, {SDPS_PRIMARY} 0%, {SDPS_SECONDARY} 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    }}
+    .stDownloadButton > button:hover,
+    .stFileUploader button:hover {{
+        background: linear-gradient(135deg, #0a3b66 0%, #006666 100%) !important;
+        color: #ffffff !important;
+    }}
+    .hero-panel,
+    .stat-card,
+    .profile-card,
+    .schema-card,
+    .tab-content-wrapper,
+    .risk-high,
+    .risk-moderate,
+    .risk-low,
+    .insight-box,
+    .notice-success {{
+        background: linear-gradient(180deg, rgba(17, 24, 39, 0.9) 0%, rgba(15, 23, 42, 0.82) 100%) !important;
+        border: 1px solid var(--sdps-border) !important;
+        color: var(--sdps-text) !important;
+        box-shadow: var(--sdps-card-shadow) !important;
+    }}
+    .hero-panel {{
+        background: linear-gradient(135deg, rgba(15, 76, 129, 0.28), rgba(0, 128, 128, 0.18)) !important;
+        margin-top: -1.5rem !important;
+        padding-top: 20px !important;
+        padding-bottom: 20px !important;
+    }}
+    .main-header {{
+        color: #ffffff !important;
+        text-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+    }}
+    .subtitle,
+    .hero-copy,
+    .centered-caption,
+    .form-instruction,
+    .stat-label,
+    .stat-note,
+    .subsection-header {{
+        color: var(--sdps-muted) !important;
+    }}
+    .subsection-header {{
+        color: #ffffff !important;
+    }}
+    .stat-value {{
+        color: #ffffff !important;
+    }}
+    .hero-chip {{
+        background: linear-gradient(135deg, {SDPS_SECONDARY}, {SDPS_PRIMARY}) !important;
+        color: #ffffff !important;
+    }}
+    .risk-high {{
+        background: rgba(245, 158, 11, 0.14) !important;
+        border-left: 5px solid {SDPS_ACCENT} !important;
+        color: #fed7aa !important;
+    }}
+    .risk-moderate {{
+        background: rgba(245, 158, 11, 0.10) !important;
+        border-left: 5px solid #fbbf24 !important;
+        color: #fde68a !important;
+    }}
+    .risk-low {{
+        background: rgba(16, 185, 129, 0.10) !important;
+        border-left: 5px solid #10b981 !important;
+        color: #bbf7d0 !important;
+    }}
+    .notice-success {{
+        background: rgba(16, 185, 129, 0.12) !important;
+        border-left: 6px solid #10b981 !important;
+        color: #d1fae5 !important;
+    }}
+    .notice-success-icon {{
+        background: #10b981 !important;
+        color: #ffffff !important;
+    }}
+    .notice-success-title,
+    .notice-success-text {{
+        color: #d1fae5 !important;
+    }}
+    div[data-testid="stFileUploader"] {{
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px dashed var(--sdps-border) !important;
+        border-radius: 18px !important;
+    }}
+    div[data-testid="stFileUploaderDropzone"] {{
+        background-color: transparent !important;
+    }}
+    div[data-testid="stFileUploader"] label,
+    div[data-testid="stFileUploader"] > div > span {{
+        color: var(--sdps-text) !important;
+    }}
+    div[data-testid="stFileUploaderDropzone"] div[data-testid="stMarkdownContainer"] p,
+    div[data-testid="stFileUploaderDropzone"] span,
+    div[data-testid="stFileUploaderDropzone"] small {{
+        color: #1f2937 !important;
+    }}
+    div[data-testid="stFileUploaderDropzone"] button span {{
+        color: #ffffff !important;
+    }}
+    div[data-testid="stFileUploaderDropzone"] svg {{
+        fill: #1f2937 !important;
+    }}
+    .stCheckbox label,
+    .stCheckbox span {{
+        color: var(--sdps-text) !important;
+    }}
+    .stAlert {{
+        border-radius: 14px !important;
+    }}
+    .hero-logo {{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 112px;
+        height: 112px;
+        overflow: hidden;
+        border-radius: 50%;
+        border: 4px solid #ffffff;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        margin: 0;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    }}
+    @media (max-width: 768px) {{
+        .block-container {{
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }}
+        .stats-grid {{
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }}
+        div[data-testid="stTabs"] button[role="tab"] {{
+            flex: 1 0 auto !important;
+            width: 150px !important;
+        }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+
+def style_dark_plot(fig, ax):
+    fig.patch.set_facecolor(SDPS_DARK_SURFACE)
+    ax.set_facecolor(SDPS_DARK_SURFACE)
+    ax.tick_params(colors=SDPS_DARK_MUTED)
+    ax.title.set_color(SDPS_DARK_TEXT)
+    ax.xaxis.label.set_color(SDPS_DARK_MUTED)
+    ax.yaxis.label.set_color(SDPS_DARK_MUTED)
+    for spine in ax.spines.values():
+        spine.set_color(SDPS_DARK_BORDER)
 
 
 SDPS_LOGO_BASE64 = load_logo_base64()
@@ -112,150 +937,37 @@ def build_history_dataframe(history):
 # ============================================================================
 
 def login_page():
-    """Display professional login page"""
-    st.markdown("""
-        <style>
-        .main {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .stTextInput label {
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 0.9em;
-        }
-        .stTextInput input {
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
-            padding: 12px 16px;
-            font-size: 0.95em;
-            transition: border-color 0.2s;
-        }
-        .stTextInput input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        .stButton button[kind="primary"] {
-            border-radius: 10px;
-            padding: 12px 24px;
-            font-weight: 600;
-            font-size: 1em;
-            background: linear-gradient(135deg, #008080 0%, #0F4C81 100%) !important;
-            background-color: #008080 !important;
-            border: 1px solid #008080 !important;
-            color: #ffffff !important;
-            transition: transform 0.2s, box-shadow 0.2s;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .stButton button[kind="primary"]:hover {
-            background: linear-gradient(135deg, #0F4C81 0%, #006666 100%) !important;
-            background-color: #0F4C81 !important;
-            border-color: #0F4C81 !important;
-            color: #ffffff !important;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 128, 128, 0.35);
-        }
-        div[data-testid="stForm"] button,
-        div[data-testid="stForm"] button[data-baseweb="button"] {
-            background: linear-gradient(135deg, #008080 0%, #0F4C81 100%) !important;
-            background-color: #008080 !important;
-            border: 1px solid #008080 !important;
-            color: #ffffff !important;
-        }
-        div[data-testid="stForm"] button:hover,
-        div[data-testid="stForm"] button[data-baseweb="button"]:hover {
-            background: linear-gradient(135deg, #0F4C81 0%, #006666 100%) !important;
-            background-color: #0F4C81 !important;
-            border-color: #0F4C81 !important;
-            box-shadow: 0 10px 25px rgba(0, 128, 128, 0.35) !important;
-        }
-        div[data-testid="stForm"] {
-            background: #ffffff;
-            padding: 45px 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-        .login-title {
-            font-size: 1.8em;
-            color: #2d3748;
-            font-weight: 700;
-            margin: 12px 0 0 0;
-            line-height: 1;
-            padding-bottom: 0;
-        }
-        .login-subtitle {
-            font-size: 0.9em;
-            color: #718096;
-            font-weight: 600;
-            margin: 0;
-            padding-top: 1px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    SDPS_LOGO_BASE64 = load_logo_base64()
-    SDPS_LOGO_HTML = (
-        f'<img src="data:image/png;base64,{SDPS_LOGO_BASE64}" alt="SDPS" '
-        'style="height:100px; width:100px; border-radius: 50%; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 4px solid #ffffff;" />'
-        if SDPS_LOGO_BASE64
-        else ""
-    )
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        with st.form("admin_login_form", clear_on_submit=False):
-            st.markdown(f"""
-                <div class="login-header">
-                    <div style="text-align: center; margin-bottom: 12px;">
-                        {SDPS_LOGO_HTML}
-                    </div>
-                    <h1 class="login-title">Admin Login</h1>
-                    <p class="login-subtitle">Student Dropout Prediction System</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            username = st.text_input("Username", placeholder="e.g., admin", key="login_username")
-            password = st.text_input("Password", type="password", placeholder="Admin password", key="login_password")
-            
-            submit_button = st.form_submit_button("Sign In", type="primary", use_container_width=True)
-            
-            if submit_button:
-                if username and password:
-                    db = get_database()
-                    if db.verify_admin(username, password):
-                        st.session_state.logged_in = True
-                        st.session_state.username = username
-                        st.query_params["authenticated"] = username
-                        st.success("Authentication successful")
-                        st.rerun()
-                    else:
-                        st.error("Invalid credentials. Please check your username and password.")
-                else:
-                    st.warning("Please fill in all fields")    
+    """Display splash, login, and account creation pages."""
+    render_auth_page(get_database())
 
 def logout():
     """Handle logout"""
     st.session_state.logged_in = False
     st.session_state.username = None
-    if "authenticated" in st.query_params:
-        del st.query_params["authenticated"]
+    st.session_state.account_type = "admin"
+    st.session_state.splash_done = False
+    for key in ["authenticated", "account_type"]:
+        if key in st.query_params:
+            del st.query_params[key]
     st.rerun()
 
 # Fix 1: Use query parameters for persistent login across browser refreshes
 auth_token = st.query_params.get("authenticated", None)
+auth_account_type = st.query_params.get("account_type", "admin")
 if auth_token:
     st.session_state.logged_in = True
     if "username" not in st.session_state:
         st.session_state.username = auth_token
+    if "account_type" not in st.session_state:
+        st.session_state.account_type = auth_account_type
 
 # Check authentication status
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "account_type" not in st.session_state:
+    st.session_state.account_type = "admin"
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = True
 
 # Show login page if not authenticated
 if not st.session_state.logged_in:
@@ -264,6 +976,7 @@ if not st.session_state.logged_in:
         layout="centered",
         initial_sidebar_state="collapsed"
     )
+    render_ui_css(True)
     login_page()
     st.stop()
 
@@ -275,6 +988,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+render_ui_css(st.session_state.get("dark_mode", True))
+
+if "login_message" in st.session_state and st.session_state.login_message:
+    st.toast(st.session_state.login_message, icon="✅")
+    st.session_state.login_message = None
 
 st.markdown(f"""
     <style>
@@ -1068,12 +1786,14 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
+render_ui_css(st.session_state.get("dark_mode", True))
+
 st.markdown(f"""
     <div class="hero-panel">
         <div class="hero-logo">
             {SDPS_LOGO_HTML}
         </div>
-        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; flex:0 1 520px; max-width: 760px; text-align: center;">
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; flex:0 1 auto; max-width: 760px; text-align: center; gap: 6px;">
             <h1 class="main-header">Student Dropout Risk Prediction System</h1>
             <p class="subtitle">AI-assisted early warning dashboard for admission support</p>
             <p class="hero-copy">Single student assessment, intake triage, and model intelligence in one view.</p>
@@ -1096,6 +1816,10 @@ if "history_notice" not in st.session_state:
     st.session_state.history_notice = None
 if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = None
+if "show_change_password" not in st.session_state:
+    st.session_state.show_change_password = False
+if "show_schema_page" not in st.session_state:
+    st.session_state.show_schema_page = False
 
 @st.cache_resource
 def load_model():
@@ -1236,28 +1960,38 @@ def compute_priority_score(prob, age):
 moderate_threshold = 0.40
 high_threshold = 0.70
 
-# Admin Profile Section
+# ============================================================================
+# SIDEBAR CONTENT
+# ============================================================================
+
 db = get_database()
-admin_profile = db.get_admin_profile(st.session_state.username)
 
-st.sidebar.markdown("---")
+# Check account type to load correct profile
+account_type = st.session_state.get('account_type', 'admin')
 
-# Load the profile image (image.png)
-profile_image_path = os.path.join(os.path.dirname(__file__), "..", "assets", "image.png")
+# Load Profile
+if account_type == 'user':
+    user_profile = db.get_user_profile(st.session_state.username)
+    profile_image_path = os.path.join(os.path.dirname(__file__), "..", "assets", "image.png")
+else:
+    user_profile = db.get_admin_profile(st.session_state.username)
+    profile_image_path = os.path.join(os.path.dirname(__file__), "..", "assets", "image.png")
+
+# Fallback logo
 if os.path.exists(profile_image_path):
     with open(profile_image_path, "rb") as img_file:
         profile_img_base64 = base64.b64encode(img_file.read()).decode("utf-8")
 else:
     profile_img_base64 = load_logo_base64()  # Fallback to logo
 
-# Professional Profile header with image.png
+# Professional Profile header
 st.sidebar.markdown(f"""
     <div class="profile-card" style="padding: 20px 16px; background: rgba(255, 255, 255, 0.1); border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
         <div style="text-align: center;">
             <img src="data:image/png;base64,{profile_img_base64}" alt="Profile" style="width: 70px; height: 70px; border-radius: 50%; border: 3px solid #0F4C81; box-shadow: 0 4px 12px rgba(15, 76, 129, 0.2); object-fit: cover;" />
         </div>
         <div style="text-align: center; margin-top: 12px;">
-            <div style="font-size: 0.7em; color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Administrator</div>
+            <div style="font-size: 0.7em; color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">{account_type.title()}</div>
         </div>
     </div>
 """, unsafe_allow_html=True)
@@ -1286,64 +2020,124 @@ if st.session_state.get('show_settings', False):
                 elif not any(c.isupper() for c in new_pass) or not any(c.isdigit() for c in new_pass):
                     st.error("Password must contain uppercase and numbers")
                 else:
-                    if db.change_password(st.session_state.username, old_pass, new_pass):
-                        st.success("Password updated successfully")
+                    # Call the correct method based on account type
+                    if account_type == 'user':
+                        success, msg = db.change_user_password(st.session_state.username, old_pass, new_pass)
+                        if success:
+                            st.success("Password updated successfully")
+                        else:
+                            st.error(msg)
                     else:
-                        st.error("Current password is incorrect")
+                        if db.change_password(st.session_state.username, old_pass, new_pass):
+                            st.success("Password updated successfully")
+                        else:
+                            st.error("Current password is incorrect")
 
         st.sidebar.markdown("---")
+        
+        # Only admins see the Danger Zone
+        if account_type == 'admin':
+            st.sidebar.caption("Danger Zone")
+            
+            st.sidebar.markdown("**Manage Users**")
+            all_users = db.get_all_users()
+            if all_users:
+                user_names = [u['username'] for u in all_users]
+                selected_user = st.sidebar.selectbox("Select user to delete", ["-- Select User --"] + user_names)
+                if selected_user != "-- Select User --":
+                    if st.sidebar.button(f"Delete '{selected_user}'", type="primary", use_container_width=True):
+                        if db.delete_user(selected_user):
+                            st.sidebar.success(f"User '{selected_user}' deleted.")
+                            st.rerun()
+                        else:
+                            st.sidebar.error("Could not delete user.")
+            else:
+                st.sidebar.caption("No regular users found.")
+            
+            st.sidebar.markdown("---")
+            if not st.session_state.get("delete_history_confirm_sb"):
+                if st.sidebar.button("Delete Prediction History", use_container_width=True, key="delete_history_btn_sb", type="secondary"):
+                    st.session_state.delete_history_confirm_sb = True
+                    st.rerun()
+            else:
+                st.sidebar.caption("Are you sure you want to delete all prediction history? This cannot be undone.")
+                del_col1, del_col2 = st.sidebar.columns(2)
+                with del_col1:
+                    if st.sidebar.button("Yes, Delete", use_container_width=True, key="confirm_delete_yes_sb"):
+                        db.clear_all_predictions()
+                        st.session_state.prediction_history = []
+                        st.session_state.delete_history_confirm_sb = False
+                        st.session_state.history_notice = {
+                            "title": "History deleted",
+                            "message": "All prediction records have been permanently removed.",
+                        }
+                        st.rerun()
+                with del_col2:
+                    if st.sidebar.button("Cancel", use_container_width=True, key="confirm_delete_no_sb"):
+                        st.session_state.delete_history_confirm_sb = False
+                        st.rerun()
 
-        st.sidebar.caption("Danger Zone")
-        if not st.session_state.get("delete_history_confirm_sb"):
-            if st.sidebar.button("Delete Prediction History", use_container_width=True, key="delete_history_btn_sb", type="secondary"):
-                st.session_state.delete_history_confirm_sb = True
-                st.rerun()
-        else:
-            st.sidebar.caption("Are you sure you want to delete all prediction history? This cannot be undone.")
-            del_col1, del_col2 = st.sidebar.columns(2)
-            with del_col1:
-                if st.sidebar.button("Yes, Delete", use_container_width=True, key="confirm_delete_yes_sb"):
-                    db.clear_all_predictions()
-                    st.session_state.prediction_history = []
-                    st.session_state.delete_history_confirm_sb = False
-                    st.session_state.history_notice = {
-                        "title": "History deleted",
-                        "message": "All prediction records have been permanently removed.",
-                    }
-                    st.rerun()
-            with del_col2:
-                if st.sidebar.button("Cancel", use_container_width=True, key="confirm_delete_no_sb"):
-                    st.session_state.delete_history_confirm_sb = False
-                    st.rerun()
+
+
+# Model Input Schema page navigation (button before Logout)
+if st.sidebar.button("Model Input Schema", use_container_width=True, key="schema_page_btn"):
+    st.session_state.show_schema_page = True
+    st.rerun()
+
+# Back button (shown only on schema page)
+if st.session_state.get('show_schema_page', False):
+    st.sidebar.markdown("---")
+    if st.sidebar.button("← Back to Dashboard", use_container_width=True, key="back_to_dashboard_btn"):
+        st.session_state.show_schema_page = False
+        st.rerun()
 
 if st.sidebar.button("Logout", use_container_width=True, type="secondary"):
     logout()
 
-st.sidebar.markdown("""
-<div class="schema-card" style="padding: 14px 16px; margin-bottom: 18px;">
-    <div style="font-size: 0.95rem; font-weight: 800; color: #ffffff; margin-bottom: 10px;">Model Input Schema</div>
-    <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; line-height: 1.35;">
-        <thead>
-            <tr>
-                <th style="width: 34px; padding: 6px; text-align: right;">#</th>
-                <th style="padding: 6px; text-align: left;">Feature</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td style="padding: 5px 6px; text-align: right;">1</td><td style="padding: 5px 6px;">Marital status</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">2</td><td style="padding: 5px 6px;">Application mode</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">3</td><td style="padding: 5px 6px;">Application order</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">4</td><td style="padding: 5px 6px;">Course</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">5</td><td style="padding: 5px 6px;">Attendance</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">6</td><td style="padding: 5px 6px;">Previous qualification</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">7</td><td style="padding: 5px 6px;">Gender</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">8</td><td style="padding: 5px 6px;">Scholarship holder</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">9</td><td style="padding: 5px 6px;">Age</td></tr>
-            <tr><td style="padding: 5px 6px; text-align: right;">10</td><td style="padding: 5px 6px;">International</td></tr>
-        </tbody>
-    </table>
-</div>
-""", unsafe_allow_html=True)
+# Schema DataFrame definition (used for both sidebar and main page)
+schema_df = pd.DataFrame({
+    "Feature": [
+        "Marital Status", "Application Mode", "Application Order", "Course", "Attendance",
+        "Previous Qualification", "Gender", "Scholarship Holder", "Age at Enrollment", "International"
+    ],
+    "Description": [
+        "Student's marital status at enrollment.",
+        "Admission route through which the student entered the institution.",
+        "Ranking of the selected course among application choices.",
+        "Academic program selected by the student.",
+        "Study schedule of the student.",
+        "Highest qualification obtained before admission.",
+        "Student's gender.",
+        "Whether the student receives scholarship funding.",
+        "Student's age when admitted.",
+        "Whether the student is an international student."
+    ],
+    "Expected Values": [
+        "Single, Married, Widower, Divorced, Facto Union, Legally Separated",
+        "Direct Entry, Diploma Entry, Mature Entry, Transfer",
+        "Integer (0-9)",
+        "Computer Science, IT, Nursing, Education, Business, etc.",
+        "Daytime, Evening",
+        "UACE, Diploma, Bachelor's Degree, Master's Degree",
+        "Male, Female",
+        "Yes, No",
+        "Positive Integer",
+        "Yes, No"
+    ],
+    "Example": [
+        "Single", "Direct Entry", "1", "Computer Science", "Daytime", "Diploma", "Female", "No", "20", "No"
+    ]
+})
+
+# Show schema page or continue to main dashboard
+if st.session_state.get('show_schema_page', False):
+    st.markdown('<div class="tab-content-wrapper">', unsafe_allow_html=True)
+    st.markdown('<p class="subsection-header">Model Input Schema</p>', unsafe_allow_html=True)
+    st.info("Ensure uploaded files contain these features and use the expected values.")
+    st.dataframe(schema_df, use_container_width=True, hide_index=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    # Don't show the rest of the dashboard when on schema page
+    st.stop()
 
 st.markdown('<p class="subsection-header">System Statistics</p>', unsafe_allow_html=True)
 
@@ -1730,10 +2524,10 @@ with tab2:
                 
                 with c1:
                     fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.hist(result_df["Dropout_Probability"], bins=20, color=SDPS_PRIMARY, edgecolor=SDPS_BLACK)
+                    ax.hist(result_df["Dropout_Probability"], bins=20, color=SDPS_PRIMARY, edgecolor=SDPS_DARK_BORDER)
                     ax.axvline(moderate_threshold, color=SDPS_SECONDARY, linestyle="--", label="Moderate threshold")
-                    ax.axvline(high_threshold, color=SDPS_BLACK, linestyle="--", label="High threshold")
-                    ax.set_facecolor(SDPS_SOFT_GRAY)
+                    ax.axvline(high_threshold, color=SDPS_ACCENT, linestyle="--", label="High threshold")
+                    style_dark_plot(fig, ax)
                     ax.set_title("Risk Probability Distribution")
                     ax.set_xlabel("Dropout Probability")
                     ax.set_ylabel("Students")
@@ -1744,8 +2538,8 @@ with tab2:
                     order = ["P1 - Immediate", "P2 - High", "P3 - Medium", "P4 - Routine"]
                     priority_counts = result_df["Priority_Band"].value_counts().reindex(order, fill_value=0)
                     fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.bar(priority_counts.index, priority_counts.values, color=[SDPS_PRIMARY, SDPS_SECONDARY, "#8d6e63", "#c7b299"])
-                    ax.set_facecolor(SDPS_SOFT_GRAY)
+                    ax.bar(priority_counts.index, priority_counts.values, color=[SDPS_PRIMARY, SDPS_SECONDARY, SDPS_ACCENT, "#8d6e63"])
+                    style_dark_plot(fig, ax)
                     ax.set_title("Operational Priority Queue")
                     ax.set_ylabel("Students")
                     st.pyplot(fig)
