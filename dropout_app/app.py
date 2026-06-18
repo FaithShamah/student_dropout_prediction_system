@@ -398,7 +398,12 @@ def render_auth_page(db):
                 if user_data:
                     otp = email_service.generate_otp()
                     db.set_verification_code(reset_email.strip(), otp)
-                    email_service.send_password_reset_email(reset_email.strip(), otp)
+                    email_sent = email_service.send_password_reset_email(reset_email.strip(), otp)
+                    
+                    if not email_sent:
+                        st.error("Failed to send reset email. Please try again or contact support.")
+                        st.stop()
+                    
                     st.session_state.reset_email_target = reset_email.strip()
                     st.session_state.auth_mode = "reset_password"
                     st.rerun()
@@ -435,8 +440,8 @@ def render_auth_page(db):
 
     st.markdown(f"""
     <p class="auth-note">
-        <strong>Admin Portal:</strong> Use your designated administrator credentials to sign in.<br>
-        <strong>New users:</strong> Create an account above, then sign in to access the dashboard.
+        <strong>Admin Portal:</strong> Use your designated admin credentials to sign in.<br>
+        <strong>New user:</strong> Create an account above, then sign in to access the dashboard.
     </p>
     """, unsafe_allow_html=True)
 
@@ -852,15 +857,20 @@ def render_ui_css(dark_mode: bool = True):
     """, unsafe_allow_html=True)
 
 
-def style_dark_plot(fig, ax):
-    fig.patch.set_facecolor(SDPS_DARK_SURFACE)
-    ax.set_facecolor(SDPS_DARK_SURFACE)
-    ax.tick_params(colors=SDPS_DARK_MUTED)
-    ax.title.set_color(SDPS_DARK_TEXT)
-    ax.xaxis.label.set_color(SDPS_DARK_MUTED)
-    ax.yaxis.label.set_color(SDPS_DARK_MUTED)
+def style_plot(fig, ax):
+    """Style chart to match the light dashboard theme."""
+    fig.patch.set_facecolor('#FFFFFF')
+    ax.set_facecolor('#FAFAFA')
+    ax.tick_params(colors='#4A4A4A', labelsize=9)
+    ax.title.set_color('#1F2937')
+    ax.title.set_fontweight('bold')
+    ax.title.set_fontsize(12)
+    ax.xaxis.label.set_color('#4A4A4A')
+    ax.yaxis.label.set_color('#4A4A4A')
     for spine in ax.spines.values():
-        spine.set_color(SDPS_DARK_BORDER)
+        spine.set_color('#E5E7EB')
+    ax.grid(True, axis='y', alpha=0.3, color='#E5E7EB', linestyle='--')
+    ax.set_axisbelow(True)
 
 
 SDPS_LOGO_BASE64 = load_logo_base64()
@@ -1928,31 +1938,52 @@ def generate_recommendations(prob, age, marital):
 # ============================================================================
 # MAIN APPLICATION INTERFACE
 # ============================================================================
-def classify_priority(priority_score):
-    if priority_score >= 80:
-        return "P1 - Immediate"
-    if priority_score >= 60:
-        return "P2 - High"
-    if priority_score >= 40:
-        return "P3 - Medium"
-    return "P4 - Routine"
-
-
-def intervention_owner(priority):
-    if priority == "P1 - Immediate":
-        return "Retention Lead"
-    if priority == "P2 - High":
-        return "Academic Advisor"
-    if priority == "P3 - Medium":
-        return "Program Coordinator"
-    return "Student Support Desk"
-
-
-def compute_priority_score(prob, age):
-    score = prob * 100
-    score += 5 if (age < 18 or age >= 30) else 0
+def compute_priority_score(prob, age, scholarship="No", attendance="Daytime"):
+    """
+    Calculate a composite priority score (0-100) based on multiple risk factors.
+    
+    Base score: dropout probability × 60 (max 60 points from probability)
+    Age risk:   +10 if age < 18 or age >= 30 (non-traditional age)
+    Scholarship: +10 if no scholarship holder
+    Attendance: +10 if evening/nighttime attendance
+    High risk:  +10 if probability already >= 0.70
+    """
+    base = prob * 60
+    age_bonus = 10 if (age < 18 or age >= 30) else 0
+    scholarship_bonus = 10 if scholarship == "No" else 0
+    attendance_bonus = 10 if attendance in ["evening", "nighttime", "Evening", "Nighttime"] else 0
+    high_risk_bonus = 10 if prob >= 0.70 else 0
+    
+    score = base + age_bonus + scholarship_bonus + attendance_bonus + high_risk_bonus
     return float(min(100, round(score, 2)))
 
+
+def classify_priority(priority_score, risk_level):
+    """
+    Classify priority band ALIGNED with risk level to avoid contradictions.
+    """
+    if risk_level == "HIGH RISK":
+        if priority_score >= 70:
+            return "P1 - Immediate"
+        return "P2 - High"
+    elif risk_level == "MODERATE RISK":
+        if priority_score >= 55:
+            return "P2 - High"
+        return "P3 - Medium"
+    else:  # LOW RISK
+        if priority_score >= 30:
+            return "P3 - Medium"
+        return "P4 - Routine"
+
+
+def intervention_owner(priority_band):
+    if priority_band == "P1 - Immediate":
+        return "Retention Lead"
+    if priority_band == "P2 - High":
+        return "Academic Advisor"
+    if priority_band == "P3 - Medium":
+        return "Program Coordinator"
+    return "Student Support Desk"
 
 moderate_threshold = 0.40
 high_threshold = 0.70
@@ -2262,8 +2293,8 @@ with tab1:
             prob_graduate = 1 - prob_dropout
             risk_label, risk_type = map_risk(prob_dropout)
 
-            priority_score = compute_priority_score(prob_dropout, age_value)
-            priority_band = classify_priority(priority_score)
+            priority_score = compute_priority_score(prob_dropout, age_value, scholarship=scholarship, attendance=attendance)
+            priority_band = classify_priority(priority_score, risk_label)
             owner = intervention_owner(priority_band)
 
             st.session_state.last_prediction = {
@@ -2478,6 +2509,24 @@ with tab2:
 
                 # Convert everything to float
                 features = features.astype(float)
+
+                # ── VALIDATE: catch unmapped values ──────────────────
+                if features.isnull().any().any():
+                    nan_cols = features.columns[features.isnull().any()].tolist()
+                    bad_rows = features[features.isnull().any(axis=1)]
+                    st.error(
+                        f"❌ Some values could not be mapped to numbers. "
+                        f"Problem columns: **{', '.join(nan_cols)}**"
+                    )
+                    st.info(
+                        "ℹ️ Make sure your CSV uses the exact values shown in the "
+                        "Model Input Schema (e.g., 'Daytime'/'Evening', 'Male'/'Female', "
+                        "'Yes'/'No')."
+                    )
+                    with st.expander("Show rows with unmapped values"):
+                        st.dataframe(bad_rows)
+                    st.stop()
+                # ─────────────────────────────────────────────────────
                 
                 # ---------------------------------------------------------
                 # RUN PREDICTIONS
@@ -2492,10 +2541,18 @@ with tab2:
                 
                 # Calculate Priority Score
                 result_df["Priority_Score"] = result_df.apply(
-                    lambda r: compute_priority_score(float(r["Dropout_Probability"]), float(r["Age at enrollment"])),
+                    lambda r: compute_priority_score(
+                        float(r["Dropout_Probability"]), 
+                        float(r["Age at enrollment"]),
+                        scholarship=str(r.get("Scholarship holder", "No")),
+                        attendance=str(r.get("Daytime/evening attendance", "Daytime"))
+                    ),
                     axis=1
                 )
-                result_df["Priority_Band"] = result_df["Priority_Score"].apply(classify_priority)
+                result_df["Priority_Band"] = result_df.apply(
+                    lambda r: classify_priority(r["Priority_Score"], r["Risk_Level"]),
+                    axis=1
+                )
                 result_df["Assigned_Owner"] = result_df["Priority_Band"].apply(intervention_owner)
     
                 st.session_state.batch_results = result_df
@@ -2516,31 +2573,194 @@ with tab2:
                 with k4:
                     st.metric("Low Risk", f"{low_count} ({(low_count / total) * 100:.1f}%)")
     
-                # --- Display Charts ---
-                c1, c2 = st.columns(2)
-                
-                with c1:
-                    fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.hist(result_df["Dropout_Probability"], bins=20, color=SDPS_PRIMARY, edgecolor=SDPS_DARK_BORDER)
-                    ax.axvline(moderate_threshold, color=SDPS_SECONDARY, linestyle="--", label="Moderate threshold")
-                    ax.axvline(high_threshold, color=SDPS_ACCENT, linestyle="--", label="High threshold")
-                    style_dark_plot(fig, ax)
-                    ax.set_title("Risk Probability Distribution")
-                    ax.set_xlabel("Dropout Probability")
-                    ax.set_ylabel("Students")
-                    ax.legend()
+                 # --- Display Charts ---
+                n_students = len(result_df)
+
+                # ── Chart 1: Risk Probability Distribution ──────────
+                fig, ax = plt.subplots(figsize=(10, 4))
+
+                # Adaptive bin count: scale with data size
+                n_bins = max(5, min(25, n_students // 3))
+
+                # Colored risk zones behind the histogram
+                ax.axvspan(0, moderate_threshold, alpha=0.08,
+                           color='#10b981', label='Low Risk Zone')
+                ax.axvspan(moderate_threshold, high_threshold, alpha=0.08,
+                           color='#f59e0b', label='Moderate Risk Zone')
+                ax.axvspan(high_threshold, 1.0, alpha=0.08,
+                           color='#ef4444', label='High Risk Zone')
+
+                ax.hist(
+                    result_df["Dropout_Probability"],
+                    bins=n_bins,
+                    color=SDPS_PRIMARY,
+                    edgecolor='white',
+                    alpha=0.85,
+                    zorder=3,
+                )
+                ax.axvline(moderate_threshold, color='#f59e0b',
+                           linestyle='--', linewidth=1.5,
+                           label=f'Moderate threshold ({moderate_threshold})')
+                ax.axvline(high_threshold, color='#ef4444',
+                           linestyle='--', linewidth=1.5,
+                           label=f'High threshold ({high_threshold})')
+
+                style_plot(fig, ax)
+                ax.set_title("Risk Probability Distribution", fontsize=13, fontweight='bold', pad=10)
+                ax.set_xlabel("Dropout Probability", fontsize=10)
+                ax.set_ylabel("Students", fontsize=10)
+                ax.legend(fontsize=8, loc='upper right')
+                fig.tight_layout()
+                st.pyplot(fig)
+
+                # ── Chart 2: Operational Priority Queue ─────────────
+                top_n = min(15, n_students)
+                top_df = result_df.nlargest(top_n, "Priority_Score") \
+                                  .sort_values("Priority_Score")
+
+                labels = [f"Student {i+1}" for i in range(len(top_df))]
+
+                bar_colors = []
+                for _, row in top_df.iterrows():
+                    if row["Risk_Level"] == "HIGH RISK":
+                        bar_colors.append("#ef4444")
+                    elif row["Risk_Level"] == "MODERATE RISK":
+                        bar_colors.append("#f59e0b")
+                    else:
+                        bar_colors.append("#10b981")
+
+                fig_height = max(4, top_n * 0.4)
+                fig, ax = plt.subplots(figsize=(10, fig_height))
+                bars = ax.barh(
+                    labels,
+                    top_df["Priority_Score"],
+                    color=bar_colors,
+                    edgecolor='white',
+                    height=0.6,
+                )
+
+                # Score labels on the bars
+                for bar, score in zip(bars, top_df["Priority_Score"]):
+                    ax.text(
+                        bar.get_width() + 1,
+                        bar.get_y() + bar.get_height() / 2,
+                        f'{score:.0f}',
+                        va='center', fontsize=9,
+                        fontweight='bold', color='#1F2937',
+                    )
+
+                ax.axvline(70, color='#ef4444', linestyle=':',
+                           alpha=0.5, label='P1 threshold')
+                ax.axvline(55, color="#2e0bf5", linestyle=':',
+                           alpha=0.5, label='P2 threshold')
+
+                style_plot(fig, ax)
+                ax.set_title(f"Operational Priority Queue (Top {top_n})", fontsize=13, fontweight='bold', pad=10)
+                ax.set_xlabel("Priority Score", fontsize=10)
+                ax.set_xlim(0, 105)
+                ax.legend(fontsize=8, loc='lower right')
+                fig.tight_layout()
+                st.pyplot(fig)
+
+                # ── Chart 3: Average Dropout Risk by Course ─────────
+                if "Course" in result_df.columns:
+                    course_risk = (
+                        result_df.groupby("Course")["Dropout_Probability"]
+                        .mean()
+                        .sort_values(ascending=True)
+                    )
+
+                    fig_height = max(4, len(course_risk) * 0.5)
+                    fig, ax = plt.subplots(figsize=(10, fig_height))
+                    course_colors = [
+                        '#ef4444' if v >= high_threshold
+                        else '#f59e0b' if v >= moderate_threshold
+                        else '#10b981'
+                        for v in course_risk.values
+                    ]
+                    ax.barh(
+                        course_risk.index,
+                        course_risk.values,
+                        color=course_colors,
+                        edgecolor='white',
+                        height=0.6,
+                    )
+                    ax.axvline(moderate_threshold, color='#f59e0b',
+                               linestyle='--', linewidth=1.5,
+                               label='Moderate threshold')
+                    ax.axvline(high_threshold, color='#ef4444',
+                               linestyle='--', linewidth=1.5,
+                               label='High threshold')
+
+                    style_plot(fig, ax)
+                    ax.set_title("Average Dropout Risk by Course", fontsize=13, fontweight='bold', pad=10)
+                    ax.set_xlabel("Average Dropout Probability", fontsize=10)
+                    ax.legend(fontsize=8)
+                    fig.tight_layout()
                     st.pyplot(fig)
-                    
-                with c2:
-                    order = ["P1 - Immediate", "P2 - High", "P3 - Medium", "P4 - Routine"]
-                    priority_counts = result_df["Priority_Band"].value_counts().reindex(order, fill_value=0)
-                    fig, ax = plt.subplots(figsize=(8, 4))
-                    ax.bar(priority_counts.index, priority_counts.values, color=[SDPS_PRIMARY, SDPS_SECONDARY, SDPS_ACCENT, "#8d6e63"])
-                    style_dark_plot(fig, ax)
-                    ax.set_title("Operational Priority Queue")
-                    ax.set_ylabel("Students")
+                else:
+                    # Fallback: Age vs Risk scatter
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    scatter_colors = result_df["Risk_Level"].map(
+                        {"HIGH RISK": "#ef4444",
+                         "MODERATE RISK": "#f59e0b",
+                         "LOW RISK": "#10b981"}
+                    )
+                    ax.scatter(
+                        result_df["Age at enrollment"],
+                        result_df["Dropout_Probability"],
+                        c=scatter_colors, alpha=0.7,
+                        edgecolors='white', s=80, zorder=3,
+                    )
+                    ax.axhline(moderate_threshold, color="#2b0e94",
+                               linestyle='--', linewidth=1)
+                    ax.axhline(high_threshold, color="#d11d1d",
+                               linestyle='--', linewidth=1)
+                    style_plot(fig, ax)
+                    ax.set_title("Age vs Dropout Risk", fontsize=13, fontweight='bold', pad=10)
+                    ax.set_xlabel("Age at Enrollment", fontsize=10)
+                    ax.set_ylabel("Dropout Probability", fontsize=10)
+                    fig.tight_layout()
                     st.pyplot(fig)
 
+                # ── Chart 4: Risk Category Composition (Centered) ───
+                risk_counts = result_df["Risk_Level"].value_counts()
+                labels = risk_counts.index.tolist()
+                sizes = risk_counts.values.tolist()
+                colors_map = {
+                    "HIGH RISK": "#ef4444",
+                    "MODERATE RISK": "#f59e0b",
+                    "LOW RISK": "#10b981",
+                }
+                chart_colors = [colors_map.get(l, "#94a3b8") for l in labels]
+
+                # Use a square aspect ratio for the donut
+                fig, ax = plt.subplots(figsize=(5, 5))
+                wedges, texts, autotexts = ax.pie(
+                    sizes,
+                    labels=labels,
+                    colors=chart_colors,
+                    autopct='%1.1f%%',
+                    startangle=90,
+                    pctdistance=0.75,
+                    wedgeprops=dict(width=0.4, edgecolor='white'),
+                )
+                for t in autotexts:
+                    t.set_fontsize(10)
+                    t.set_fontweight('bold')
+                    t.set_color('#1F2937')
+                for t in texts:
+                    t.set_fontsize(10)
+                    t.set_color('#4A4A4A')
+                ax.set_title("Risk Category Composition", fontsize=13, fontweight='bold', pad=10)
+                fig.patch.set_facecolor('#FFFFFF')
+                fig.tight_layout()
+                
+                # Center the donut chart so it doesn't stretch across the whole page
+                left, center, right = st.columns([1, 2, 1])
+                with center:
+                    st.pyplot(fig)
+                    
                 # --- Display Detailed Table ---
                 st.markdown('<p class="subsection-header">Detailed Results</p>', unsafe_allow_html=True)
                 st.dataframe(
