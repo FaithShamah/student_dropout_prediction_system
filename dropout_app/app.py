@@ -1006,8 +1006,8 @@ if "login_message" in st.session_state and st.session_state.login_message:
 st.markdown(f"""
     <style>
     .stApp {{
-        background: linear-gradient(180deg, #ffffff 0%, #fbf8f4 100%);
-        color: #000000;
+        background: linear-gradient(180deg, #E6F3FF 0%, #B8D9FF 100%);
+        color: #1a2935;
     }}
     .block-container {{
         padding-top: 0.65rem;
@@ -2423,6 +2423,7 @@ with tab2:
                 df_batch = pd.read_excel(uploaded)
             else:
                 df_batch = pd.read_csv(uploaded)
+
             
             # ---------------------------------------------------------
             # AUTO-RENAME COLUMNS
@@ -2488,8 +2489,8 @@ with tab2:
                 # 5. Attendance
                 attendance_map = {"Daytime": 1, "Evening": 0}
                 features["Daytime/evening attendance"] = features["Daytime/evening attendance"].map(attendance_map)
-
-                # 6. Qualification
+    
+               # 6. Qualification
                 features["Previous qualification"] = features["Previous qualification"].map(QUALIFICATION)
 
                 # 7. Gender

@@ -449,6 +449,30 @@ class Database:
             self._handle_error(e)
             return False
 
+    def move_user_to_ledger(self, username: str) -> bool:
+        """Move a regular user from users to user_ledger table instead of hard-deleting."""
+        try:
+            user_resp = self.client.table('users').select('*').eq('username', username).execute()
+            if not user_resp.data:
+                return False
+            user_data = user_resp.data[0]
+            ledger_payload = {
+                'original_user_id': user_data.get('id'),
+                'username': user_data.get('username'),
+                'email': user_data.get('email'),
+                'full_name': user_data.get('full_name'),
+                'email_verified': user_data.get('email_verified'),
+                'profile_image': user_data.get('profile_image'),
+                'created_at': user_data.get('created_at'),
+                'moved_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            self.client.table('user_ledger').insert(ledger_payload).execute()
+            self.client.table('users').delete().eq('id', user_data.get('id')).execute()
+            return True
+        except Exception as e:
+            self._handle_error(e)
+            return False
+
     # ============================================================================
     # PREDICTION HISTORY METHODS
     # ============================================================================
